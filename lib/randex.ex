@@ -1,0 +1,2 @@
+defmodule Randex do
+end
