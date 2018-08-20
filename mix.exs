@@ -18,6 +18,8 @@ defmodule Randex.MixProject do
   end
 
   defp deps do
-    []
+    [
+      {:ex_doc, "~> 0.15.0", only: :dev}
+    ]
   end
 end
