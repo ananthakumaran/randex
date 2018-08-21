@@ -114,9 +114,9 @@ defmodule Randex.Parser do
         if Enum.member?(["*", "?", "+"], char) do
           ast =
             case char do
-              "*" -> %AST.Repetition{min: 0, max: :infinite}
+              "*" -> %AST.Repetition{min: 0, max: :infinity}
               "?" -> %AST.Repetition{min: 0, max: 1}
-              "+" -> %AST.Repetition{min: 1, max: :infinite}
+              "+" -> %AST.Repetition{min: 1, max: :infinity}
             end
 
           parse_loop(rest, &do_parse/1, [%{ast | value: current} | state])
@@ -131,7 +131,7 @@ defmodule Randex.Parser do
 
                 ",}" <> rest ->
                   parse_loop(rest, &do_parse/1, [
-                    %AST.Repetition{min: min, max: :infinite, value: current} | state
+                    %AST.Repetition{min: min, max: :infinity, value: current} | state
                   ])
 
                 "," <> rest ->
@@ -143,7 +143,7 @@ defmodule Randex.Parser do
               end
 
             :error ->
-              parse_loop(rest, &do_parse/1, [%AST.Char{value: char}])
+              parse_loop(rest, &do_parse/1, [%AST.Char{value: char} | [current | state]])
           end
         end
     end
