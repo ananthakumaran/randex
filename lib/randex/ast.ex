@@ -26,4 +26,12 @@ defmodule Randex.AST do
   defmodule Or do
     defstruct [:left, :right]
   end
+
+  defmodule Group do
+    defstruct [:values]
+  end
+
+  defmodule Repetition do
+    defstruct [:min, :max, :value]
+  end
 end

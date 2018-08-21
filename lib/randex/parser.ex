@@ -27,6 +27,23 @@ defmodule Randex.Parser do
     {:cont, fun}
   end
 
+  defp do_parse("(" <> rest) do
+    {inner, rest} = find_matching(rest, "", 0)
+
+    fun = fn state ->
+      parse_loop(rest, &do_parse/1, [
+        %AST.Group{values: parse_loop(inner, &do_parse/1, [])} | state
+      ])
+    end
+
+    {:cont, fun}
+  end
+
+  defp do_parse("{" <> _rest = full), do: maybe_repetition(full)
+  defp do_parse("*" <> _rest = full), do: maybe_repetition(full)
+  defp do_parse("?" <> _rest = full), do: maybe_repetition(full)
+  defp do_parse("+" <> _rest = full), do: maybe_repetition(full)
+
   defp do_parse(<<x::utf8>> <> rest) do
     {%AST.Char{value: <<x::utf8>>}, rest}
   end
@@ -74,5 +91,63 @@ defmodule Randex.Parser do
       {result, rest} ->
         parse_loop(rest, parser, [result | state])
     end
+  end
+
+  defp find_matching("\\" <> <<x::utf8>> <> rest, acc, count),
+    do: find_matching(rest, acc <> "\\" <> <<x::utf8>>, count)
+
+  defp find_matching(")" <> rest, acc, 0), do: {acc, rest}
+  defp find_matching(")" <> rest, acc, count), do: find_matching(rest, acc <> ")", count - 1)
+  defp find_matching("(" <> rest, acc, count), do: find_matching(rest, acc <> "(", count + 1)
+
+  defp find_matching(<<x::utf8>> <> rest, acc, count),
+    do: find_matching(rest, acc <> <<x::utf8>>, count)
+
+  defp maybe_repetition(<<x::utf8>> <> rest) do
+    char = <<x::utf8>>
+
+    fun = fn
+      [] ->
+        parse_loop(rest, &do_parse/1, [%AST.Char{value: char}])
+
+      [current | state] ->
+        if Enum.member?(["*", "?", "+"], char) do
+          ast =
+            case char do
+              "*" -> %AST.Repetition{min: 0, max: :infinite}
+              "?" -> %AST.Repetition{min: 0, max: 1}
+              "+" -> %AST.Repetition{min: 1, max: :infinite}
+            end
+
+          parse_loop(rest, &do_parse/1, [%{ast | value: current} | state])
+        else
+          case Integer.parse(rest) do
+            {min, rest} ->
+              case rest do
+                "}" ->
+                  parse_loop(rest, &do_parse/1, [
+                    %AST.Repetition{min: min, max: min, value: current} | state
+                  ])
+
+                ",}" <> rest ->
+                  parse_loop(rest, &do_parse/1, [
+                    %AST.Repetition{min: min, max: :infinite, value: current} | state
+                  ])
+
+                "," <> rest ->
+                  {max, rest} = Integer.parse(rest)
+
+                  parse_loop(rest, &do_parse/1, [
+                    %AST.Repetition{min: min, max: max, value: current} | state
+                  ])
+              end
+
+            :error ->
+              parse_loop(rest, &do_parse/1, [%AST.Char{value: char}])
+          end
+        end
+    end
+
+    {:cont, fun}
   end
 end
