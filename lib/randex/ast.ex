@@ -28,10 +28,18 @@ defmodule Randex.AST do
   end
 
   defmodule Group do
-    defstruct [:values]
+    defstruct [:values, :capture]
   end
 
   defmodule Repetition do
     defstruct [:min, :max, :value]
+  end
+
+  defmodule Lazy do
+    defstruct [:value]
+  end
+
+  defmodule Option do
+    defstruct [:value]
   end
 end

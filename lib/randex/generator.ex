@@ -25,6 +25,14 @@ defmodule Randex.Generator do
     StreamData.constant("")
   end
 
+  defp do_gen(%AST.Option{}) do
+    StreamData.constant("")
+  end
+
+  defp do_gen(%AST.Lazy{value: value}) do
+    do_gen(value)
+  end
+
   defp do_gen(%AST.Repetition{min: min, max: max, value: ast}) do
     do_gen(ast)
     |> StreamData.list_of(min_length: min, max_length: max)
