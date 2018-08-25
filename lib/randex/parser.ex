@@ -1,8 +1,36 @@
 defmodule Randex.Parser do
+  defmodule Context do
+    defmodule Global do
+      defstruct [:extended, :multiline, :dotall, :caseless]
+    end
+
+    defmodule Local do
+      defstruct [:extended, :multiline, :dotall, :caseless]
+    end
+
+    defstruct [:global, :local]
+
+    def mode?(context, mode) do
+      case Map.get(context.local, mode) do
+        false ->
+          false
+
+        true ->
+          true
+
+        nil ->
+          !!Map.get(context.global, mode)
+      end
+    end
+  end
+
   alias Randex.AST
 
-  def parse(string) do
-    parse_loop(string, &do_parse/1, [])
+  @whitespaces [" ", "\n", "\t"]
+  @whitespace_codes Enum.map(@whitespaces, fn <<x::utf8>> -> x end)
+
+  def parse(string, context \\ %Context{global: %Context.Global{}, local: %Context.Local{}}) do
+    parse_loop(string, &do_parse/1, [], context)
   end
 
   defp do_parse("\\" <> <<x::utf8>> <> rest), do: escape(<<x::utf8>>, rest)
@@ -11,6 +39,34 @@ defmodule Randex.Parser do
   defp do_parse("$" <> rest), do: {%AST.Dollar{}, rest}
   defp do_parse("." <> rest), do: {%AST.Dot{}, rest}
 
+  defp do_parse("#" <> rest) do
+    fun = fn old_ast, context ->
+      {ast, rest} =
+        if Context.mode?(context, :extended) do
+          [comment, rest] = String.split(rest, "\n", parts: 2)
+          {%AST.Comment{value: comment}, rest}
+        else
+          {%AST.Char{value: "#"}, rest}
+        end
+
+      parse_loop(rest, &do_parse/1, [ast | old_ast], context)
+    end
+
+    {:cont, fun}
+  end
+
+  defp do_parse(<<x::utf8>> <> rest) when x in @whitespace_codes do
+    fun = fn old_ast, context ->
+      if Context.mode?(context, :extended) do
+        parse_loop(rest, &do_parse/1, old_ast, context)
+      else
+        parse_loop(rest, &do_parse/1, [%AST.Char{value: <<x::utf8>>} | old_ast], context)
+      end
+    end
+
+    {:cont, fun}
+  end
+
   defp do_parse("[" <> rest) do
     [class, rest] = String.split(rest, ~r/(?<=\\\\|[^\\])]/, parts: 2)
 
@@ -18,8 +74,8 @@ defmodule Randex.Parser do
   end
 
   defp do_parse("|" <> rest) do
-    fun = fn state ->
-      [%AST.Or{left: Enum.reverse(state), right: parse(rest)}]
+    fun = fn ast, context ->
+      [%AST.Or{left: Enum.reverse(ast), right: parse(rest, context)}]
     end
 
     {:cont, fun}
@@ -32,8 +88,7 @@ defmodule Randex.Parser do
 
       "?" <> rest ->
         [options, rest] = String.split(rest, ")", parts: 2)
-
-        {%AST.Option{value: options}, rest}
+        parse_options(options, rest)
 
       _ ->
         parse_group(rest, true)
@@ -50,11 +105,11 @@ defmodule Randex.Parser do
   end
 
   defp parse_class("^" <> string) do
-    %AST.Class{values: parse_loop(string, &do_parse_class/1, []), negate: true}
+    %AST.Class{values: parse_loop(string, &do_parse_class/1, [], nil), negate: true}
   end
 
   defp parse_class(string) do
-    %AST.Class{values: parse_loop(string, &do_parse_class/1, [])}
+    %AST.Class{values: parse_loop(string, &do_parse_class/1, [], nil)}
   end
 
   defp do_parse_class("\\" <> <<x::utf8>> <> rest), do: escape(<<x::utf8>>, rest)
@@ -65,12 +120,12 @@ defmodule Randex.Parser do
 
   defp do_parse_class("-" <> rest) do
     fun = fn
-      [first | state] ->
+      [first | ast], context ->
         {last, rest} = do_parse_class(rest)
-        parse_loop(rest, &do_parse_class/1, [%AST.Range{first: first, last: last} | state])
+        parse_loop(rest, &do_parse_class/1, [%AST.Range{first: first, last: last} | ast], context)
 
-      [] ->
-        parse_loop(rest, &do_parse_class/1, [%AST.Char{value: "-"}])
+      [], context ->
+        parse_loop(rest, &do_parse_class/1, [%AST.Char{value: "-"}], context)
     end
 
     {:cont, fun}
@@ -80,25 +135,34 @@ defmodule Randex.Parser do
     {%AST.Char{value: <<x::utf8>>}, rest}
   end
 
-  defp parse_loop("", _parser, state), do: Enum.reverse(state)
+  defp parse_loop("", _parser, ast, _context), do: Enum.reverse(ast)
 
-  defp parse_loop(rest, parser, state) do
+  defp parse_loop(rest, parser, ast, context) do
     case parser.(rest) do
       {:cont, fun} ->
-        fun.(state)
+        fun.(ast, context)
 
       {result, rest} ->
-        parse_loop(rest, parser, [result | state])
+        parse_loop(rest, parser, [result | ast], context)
     end
   end
 
   defp parse_group(rest, capture) do
     {inner, rest} = find_matching(rest, "", 0)
 
-    fun = fn state ->
-      parse_loop(rest, &do_parse/1, [
-        %AST.Group{values: parse_loop(inner, &do_parse/1, []), capture: capture} | state
-      ])
+    fun = fn ast, context ->
+      parse_loop(
+        rest,
+        &do_parse/1,
+        [
+          %AST.Group{
+            values: parse_loop(inner, &do_parse/1, [], %{context | local: %Context.Local{}}),
+            capture: capture
+          }
+          | ast
+        ],
+        context
+      )
     end
 
     {:cont, fun}
@@ -118,13 +182,13 @@ defmodule Randex.Parser do
     char = <<x::utf8>>
 
     fun = fn
-      [] ->
-        parse_loop(rest, &do_parse/1, [%AST.Char{value: char}])
+      [], context ->
+        parse_loop(rest, &do_parse/1, [%AST.Char{value: char}], context)
 
-      [current | state] ->
+      [current | old_ast], context ->
         cond do
           char == "?" && current.__struct__ == AST.Repetition ->
-            parse_loop(rest, &do_parse/1, [%{%AST.Lazy{} | value: current} | state])
+            parse_loop(rest, &do_parse/1, [%{%AST.Lazy{} | value: current} | old_ast], context)
 
           Enum.member?(["*", "?", "+"], char) ->
             ast =
@@ -134,37 +198,102 @@ defmodule Randex.Parser do
                 "+" -> %AST.Repetition{min: 1, max: :infinity}
               end
 
-            parse_loop(rest, &do_parse/1, [%{ast | value: current} | state])
+            parse_loop(rest, &do_parse/1, [%{ast | value: current} | old_ast], context)
 
           true ->
             case Integer.parse(rest) do
               {min, rest} ->
                 case rest do
                   "}" ->
-                    parse_loop(rest, &do_parse/1, [
-                      %AST.Repetition{min: min, max: min, value: current} | state
-                    ])
+                    parse_loop(
+                      rest,
+                      &do_parse/1,
+                      [
+                        %AST.Repetition{min: min, max: min, value: current} | old_ast
+                      ],
+                      context
+                    )
 
                   ",}" <> rest ->
-                    parse_loop(rest, &do_parse/1, [
-                      %AST.Repetition{min: min, max: :infinity, value: current} | state
-                    ])
+                    parse_loop(
+                      rest,
+                      &do_parse/1,
+                      [
+                        %AST.Repetition{min: min, max: :infinity, value: current} | old_ast
+                      ],
+                      context
+                    )
 
                   "," <> rest ->
                     {max, "}" <> rest} = Integer.parse(rest)
 
-                    parse_loop(rest, &do_parse/1, [
-                      %AST.Repetition{min: min, max: max, value: current} | state
-                    ])
+                    parse_loop(
+                      rest,
+                      &do_parse/1,
+                      [
+                        %AST.Repetition{min: min, max: max, value: current} | old_ast
+                      ],
+                      context
+                    )
                 end
 
               :error ->
-                parse_loop(rest, &do_parse/1, [%AST.Char{value: char} | [current | state]])
+                parse_loop(
+                  rest,
+                  &do_parse/1,
+                  [%AST.Char{value: char} | [current | old_ast]],
+                  context
+                )
             end
         end
     end
 
     {:cont, fun}
+  end
+
+  defp parse_options(options, rest) do
+    options = parse_loop(options, &do_parse_option/1, [], nil)
+
+    fun = fn ast, context ->
+      {local, _} =
+        Enum.reduce(options, {context.local, true}, fn option, {local, pred} ->
+          case option do
+            :negate -> {local, false}
+            %AST.Comment{} -> {local, pred}
+            _ -> {%{local | option => pred}, pred}
+          end
+        end)
+
+      parse_loop(rest, &do_parse/1, [%AST.Option{value: options} | ast], %{context | local: local})
+    end
+
+    {:cont, fun}
+  end
+
+  defp do_parse_option("#" <> comment) do
+    {%AST.Comment{value: comment}, ""}
+  end
+
+  defp do_parse_option(<<x::utf8>> <> rest) do
+    option =
+      case <<x::utf8>> do
+        "-" ->
+          :negate
+
+        "i" ->
+          :caseless
+
+        "m" ->
+          :multiline
+
+        "s" ->
+          :dotall
+
+        "x" ->
+          :extended
+      end
+
+    {option, rest}
   end
 
   defp escape(x, rest) do

@@ -29,6 +29,10 @@ defmodule Randex.Generator do
     StreamData.constant("")
   end
 
+  defp do_gen(%AST.Comment{}) do
+    StreamData.constant("")
+  end
+
   defp do_gen(%AST.Lazy{value: value}) do
     do_gen(value)
   end

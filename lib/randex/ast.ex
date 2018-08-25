@@ -42,4 +42,8 @@ defmodule Randex.AST do
   defmodule Option do
     defstruct [:value]
   end
+
+  defmodule Comment do
+    defstruct [:value]
+  end
 end
