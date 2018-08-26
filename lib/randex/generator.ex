@@ -4,14 +4,20 @@ defmodule Randex.Generator do
   def gen(asts) do
     Enum.map(asts, &do_gen/1)
     |> StreamData.fixed_list()
-    |> StreamData.map(&Enum.join(&1, ""))
+    |> resolve
   end
 
   defp do_gen(%AST.Char{value: char}) do
     StreamData.constant(char)
   end
 
-  defp do_gen(%AST.Group{values: asts}), do: gen(asts)
+  defp do_gen(%AST.Group{values: asts} = group) do
+    Enum.map(asts, &do_gen/1)
+    |> StreamData.fixed_list()
+    |> StreamData.map(&{group, &1})
+  end
+
+  defp do_gen(%AST.BackReference{} = backref), do: StreamData.constant(backref)
 
   defp do_gen(%AST.Class{} = ast) do
     gen_class(ast)
@@ -40,7 +46,6 @@ defmodule Randex.Generator do
   defp do_gen(%AST.Repetition{min: min, max: max, value: ast}) do
     do_gen(ast)
     |> StreamData.list_of(min_length: min, max_length: max)
-    |> StreamData.map(&Enum.join(&1, ""))
   end
 
   defp do_gen(%AST.Or{left: left, right: right}) do
@@ -79,13 +84,38 @@ defmodule Randex.Generator do
     |> StreamData.one_of()
   end
 
+  defp resolve(g) do
+    StreamData.map(g, fn values ->
+      do_resolve(values) |> elem(1)
+    end)
+  end
+
+  defp do_resolve(values) do
+    List.flatten(values)
+    |> Enum.reduce({%{}, ""}, fn value, {groups, acc} ->
+      case value do
+        {%AST.Group{number: n}, values} ->
+          {sub_groups, string} = do_resolve(values)
+          groups = Map.merge(groups, sub_groups)
+
+          {Map.put(groups, n, string), acc <> string}
+
+        %AST.BackReference{number: n} ->
+          {groups, acc <> Map.fetch!(groups, n)}
+
+        string ->
+          {groups, acc <> string}
+      end
+    end)
+  end
+
   defp non_overlapping([], []), do: []
   defp non_overlapping([x], acc), do: Enum.reverse([x | acc])
 
   defp non_overlapping([a | [b | rest]], acc) do
     cond do
       b.first > a.last -> non_overlapping([b | rest], [a | acc])
-      true -> non_overlapping([a.first..Enum.max(a.last, b.last) | rest], acc)
+      true -> non_overlapping([a.first..Enum.max([a.last, b.last]) | rest], acc)
     end
   end
 

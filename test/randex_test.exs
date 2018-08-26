@@ -1,4 +1,5 @@
 defmodule RandexTest do
+  require Logger
   use ExUnit.Case
   doctest Randex
 
@@ -6,7 +7,7 @@ defmodule RandexTest do
     "",
     "$",
     "((((((((((a))))))))))",
-    # "((((((((((a))))))))))\\10",
+    "((((((((((a))))))))))\\10",
     "(((((((((a)))))))))",
     "(([a-z]+):)?([a-z]+)$",
     "((a)(b)c)(d)",
@@ -25,8 +26,8 @@ defmodule RandexTest do
     "(?<id>aaa)a",
     # "(?i)$",
     # "(?i)$b",
-    # "(?i)((((((((((a))))))))))",
-    # "(?i)((((((((((a))))))))))\\10",
+    "(?i)((((((((((a))))))))))",
+    "(?i)((((((((((a))))))))))\\10",
     "(?i)(((((((((a)))))))))",
     "(?i)((a)(b)c)(d)",
     "(?i)((a))",
@@ -34,7 +35,7 @@ defmodule RandexTest do
     "(?i)(.*)c(.*)",
     "(?i)(?:(?:(?:(?:(?:(?:(?:(?:(?:(a))))))))))",
     "(?i)(?:(?:(?:(?:(?:(?:(?:(?:(?:(a|b|c))))))))))",
-    # "(?i)([a-c]*)\\1",
+    "(?i)([a-c]*)\\1",
     "(?i)([abc])*bcd",
     "(?i)([abc])*d",
     "(?i)(a)b(c)",
@@ -45,7 +46,7 @@ defmodule RandexTest do
     "(?i)(a+|b){0,1}?",
     "(?i)(a+|b){0,}",
     "(?i)(a+|b){1,}",
-    # "(?i)(abc)\\1",
+    "(?i)(abc)\\1",
     "(?i)(abc|)ef",
     "(?i)(ab|a)b*c",
     "(?i)(ab|ab*)bc",
@@ -129,14 +130,14 @@ defmodule RandexTest do
     "([^.]*)\\.([^:]*):[T ]+(.*)",
     "([^/]*/)*sub1/",
     "([^N]*N)+",
-    # "([a-c]*)\\1",
-    # "([a-c]+)\\1",
+    "([a-c]*)\\1",
+    "([a-c]+)\\1",
     # "([ab]*?)(?!(b))c",
     # "([ab]*?)(?<!(a))",
     # "([ab]*?)(?=(b)?)c",
     "([abc])*bcd",
     "([abc])*d",
-    # "([abc]*)\\1",
+    "([abc]*)\\1",
     "([abc]*)x",
     "([ac])+x",
     "([xyz]*)x",
@@ -145,14 +146,14 @@ defmodule RandexTest do
     "(a)(b)c|ab",
     "(a)+b|aac",
     "(a)+x",
-    # "(a).+\\1",
-    # "(a)\\1",
+    "(a).+\\1",
+    "(a)\\1",
     "(a)b(c)",
-    # "(a)ba*\\1",
-    # "(a+)+\\1",
-    # "(a+).\\1$",
-    # "(a+)\\1",
-    # "(a+)a\\1$",
+    "(a)ba*\\1",
+    "(a+)+\\1",
+    "(a+).\\1$",
+    "(a+)\\1",
+    "(a+)a\\1$",
     "(a+b)*",
     "(a+|){,}",
     "(a+|b)*",
@@ -160,13 +161,13 @@ defmodule RandexTest do
     "(a+|b)?",
     "(a+|b){,1}",
     "(a+|b){,}",
-    # "(aa|a)a\\1$",
-    # "(abc)\\1",
+    "(aa|a)a\\1$",
+    "(abc)\\1",
     "(abc|)ef",
     "(ab|a)b*c",
     "(ab|ab*)bc",
     "(ab|cd)e",
-    # "(a|aa)a\\1$",
+    "(a|aa)a\\1$",
     "(a|b)c*d",
     "(a|b|c|d|e)f",
     "(bc+d$|ef*g.|h?i(j|k))",
@@ -213,7 +214,7 @@ defmodule RandexTest do
     # "\\xff",
     "^",
     "^(.+)?B",
-    # "^(a+).\\1$",
+    "^(a+).\\1$",
     "^(ab|cd)e",
     "^\\w+=(\\\\[\\000-\\277]|[^\\n\\\\])*",
     "^a(bc+|b[eh])g|.h$",
@@ -285,22 +286,15 @@ defmodule RandexTest do
     "z\\B"
   ]
 
-  test "parse" do
-    for c <- @cases do
-      IO.inspect(c)
-      IO.inspect(Randex.Parser.parse(c))
-    end
-  end
-
   test "gen" do
     for c <- @cases do
-      IO.inspect(c)
-
+      Logger.info(c)
       regex = Regex.compile!(c)
 
-      Randex.Parser.parse(c)
-      |> IO.inspect()
-      |> Randex.Generator.gen()
+      ast = Randex.Parser.parse(c)
+      Logger.info(inspect(ast))
+
+      Randex.Generator.gen(ast)
       |> Enum.take(10)
       |> Enum.each(fn sample ->
         assert sample =~ regex

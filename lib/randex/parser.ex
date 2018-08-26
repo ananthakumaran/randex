@@ -1,39 +1,16 @@
 defmodule Randex.Parser do
-  defmodule Context do
-    defmodule Global do
-      defstruct [:extended, :multiline, :dotall, :caseless]
-    end
-
-    defmodule Local do
-      defstruct [:extended, :multiline, :dotall, :caseless]
-    end
-
-    defstruct [:global, :local]
-
-    def mode?(context, mode) do
-      case Map.get(context.local, mode) do
-        false ->
-          false
-
-        true ->
-          true
-
-        nil ->
-          !!Map.get(context.global, mode)
-      end
-    end
-  end
-
+  alias Randex.Context
   alias Randex.AST
 
   @whitespaces [" ", "\n", "\t"]
   @whitespace_codes Enum.map(@whitespaces, fn <<x::utf8>> -> x end)
 
   def parse(string, context \\ %Context{global: %Context.Global{}, local: %Context.Local{}}) do
-    parse_loop(string, &do_parse/1, [], context)
+    {ast, _context} = parse_loop(string, &do_parse/1, [], context)
+    ast
   end
 
-  defp do_parse("\\" <> <<x::utf8>> <> rest), do: escape(<<x::utf8>>, rest)
+  defp do_parse("\\" <> <<x::utf8>> <> rest), do: escape(<<x::utf8>>, rest, false)
 
   defp do_parse("^" <> rest), do: {%AST.Circumflex{}, rest}
   defp do_parse("$" <> rest), do: {%AST.Dollar{}, rest}
@@ -68,14 +45,19 @@ defmodule Randex.Parser do
   end
 
   defp do_parse("[" <> rest) do
-    [class, rest] = String.split(rest, ~r/(?<=\\\\|[^\\])]/, parts: 2)
+    fun = fn old_ast, context ->
+      [class, rest] = String.split(rest, ~r/(?<=\\\\|[^\\])]/, parts: 2)
+      ast = parse_class(class, context)
+      parse_loop(rest, &do_parse/1, [ast | old_ast], context)
+    end
 
-    {parse_class(class), rest}
+    {:cont, fun}
   end
 
   defp do_parse("|" <> rest) do
     fun = fn ast, context ->
-      [%AST.Or{left: Enum.reverse(ast), right: parse(rest, context)}]
+      {right, context} = parse_loop(rest, &do_parse/1, [], context)
+      {[%AST.Or{left: Enum.reverse(ast), right: right}], context}
     end
 
     {:cont, fun}
@@ -112,15 +94,18 @@ defmodule Randex.Parser do
     {%AST.Char{value: <<x::utf8>>}, rest}
   end
 
-  defp parse_class("^" <> string) do
-    %AST.Class{values: parse_loop(string, &do_parse_class/1, [], nil), negate: true}
+  defp parse_class(string, context) do
+    {negate, string} =
+      case string do
+        "^" <> string -> {true, string}
+        _ -> {false, string}
+      end
+
+    {ast, _context} = parse_loop(string, &do_parse_class/1, [], context)
+    %AST.Class{values: ast, negate: negate}
   end
 
-  defp parse_class(string) do
-    %AST.Class{values: parse_loop(string, &do_parse_class/1, [], nil)}
-  end
-
-  defp do_parse_class("\\" <> <<x::utf8>> <> rest), do: escape(<<x::utf8>>, rest)
+  defp do_parse_class("\\" <> <<x::utf8>> <> rest), do: escape(<<x::utf8>>, rest, true)
 
   defp do_parse_class("-") do
     {%AST.Char{value: "-"}, ""}
@@ -128,9 +113,9 @@ defmodule Randex.Parser do
 
   defp do_parse_class("-" <> rest) do
     fun = fn
-      [first | ast], context ->
-        {last, rest} = do_parse_class(rest)
-        parse_loop(rest, &do_parse_class/1, [%AST.Range{first: first, last: last} | ast], context)
+      [first | old_ast], context ->
+        {[last | rest], context} = parse_loop(rest, &do_parse_class/1, [], context)
+        {Enum.reverse(old_ast) ++ [%AST.Range{first: first, last: last}] ++ rest, context}
 
       [], context ->
         parse_loop(rest, &do_parse_class/1, [%AST.Char{value: "-"}], context)
@@ -143,7 +128,7 @@ defmodule Randex.Parser do
     {%AST.Char{value: <<x::utf8>>}, rest}
   end
 
-  defp parse_loop("", _parser, ast, _context), do: Enum.reverse(ast)
+  defp parse_loop("", _parser, ast, context), do: {Enum.reverse(ast), context}
 
   defp parse_loop(rest, parser, ast, context) do
     case parser.(rest) do
@@ -166,14 +151,27 @@ defmodule Randex.Parser do
     {inner, rest} = find_matching(rest, "", 0)
 
     fun = fn ast, context ->
+      {context, number} =
+        if capture do
+          context = Context.update_global(context, :group, &(&1 + 1))
+          {context, context.global.group}
+        else
+          {context, nil}
+        end
+
+      current_local = context.local
+      {values, context} = parse_loop(inner, &do_parse/1, [], %{context | local: %Context.Local{}})
+      context = %{context | local: current_local}
+
       parse_loop(
         rest,
         &do_parse/1,
         [
           %AST.Group{
-            values: parse_loop(inner, &do_parse/1, [], %{context | local: %Context.Local{}}),
+            values: values,
             capture: capture,
-            name: name
+            name: name,
+            number: number
           }
           | ast
         ],
@@ -269,7 +267,7 @@ defmodule Randex.Parser do
 
   defp parse_options(rest) do
     [options, rest] = String.split(rest, ")", parts: 2)
-    options = parse_loop(options, &do_parse_option/1, [], nil)
+    {options, nil} = parse_loop(options, &do_parse_option/1, [], nil)
 
     fun = fn ast, context ->
       {local, _} =
@@ -313,20 +311,36 @@ defmodule Randex.Parser do
     {option, rest}
   end
 
-  defp escape(x, rest) do
-    case x do
-      x when x in ["a", "b", "e", "f", "n", "r", "t", "v"] ->
-        {%AST.Char{value: Macro.unescape_string("\\" <> x)}, rest}
+  defp escape(x, rest, class) do
+    fun = fn old_ast, context ->
+      {ast, rest} =
+        case x do
+          x when x in ["0", "a", "b", "e", "f", "n", "r", "t", "v"] ->
+            {%AST.Char{value: Macro.unescape_string("\\" <> x)}, rest}
 
-      "d" ->
-        {%AST.Range{first: %AST.Char{value: "0"}, last: %AST.Char{value: "9"}}, rest}
+          "d" ->
+            {%AST.Range{first: %AST.Char{value: "0"}, last: %AST.Char{value: "9"}}, rest}
 
-      <<x::utf8>> when x in 48..57 ->
-        {n, rest} = Integer.parse(<<x::utf8>> <> rest)
-        {%AST.Char{value: <<n>>}, rest}
+          <<x::utf8>> when x in 49..57 ->
+            {n, rest} = Integer.parse(<<x::utf8>> <> rest)
 
-      _ ->
-        {%AST.Char{value: x}, rest}
+            if !class && context.global.group >= n do
+              {%AST.BackReference{number: n}, rest}
+            else
+              {%AST.Char{value: <<n::utf8>>}, rest}
+            end
+
+          _ ->
+            {%AST.Char{value: x}, rest}
+        end
+
+      if class do
+        parse_loop(rest, &do_parse_class/1, [ast | old_ast], context)
+      else
+        parse_loop(rest, &do_parse/1, [ast | old_ast], context)
+      end
     end
+
+    {:cont, fun}
   end
 end

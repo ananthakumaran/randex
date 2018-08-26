@@ -28,7 +28,7 @@ defmodule Randex.AST do
   end
 
   defmodule Group do
-    defstruct [:values, :capture, :name]
+    defstruct [:values, :capture, :name, :number]
   end
 
   defmodule Repetition do
@@ -45,5 +45,9 @@ defmodule Randex.AST do
 
   defmodule Comment do
     defstruct [:value]
+  end
+
+  defmodule BackReference do
+    defstruct [:name, :number]
   end
 end
