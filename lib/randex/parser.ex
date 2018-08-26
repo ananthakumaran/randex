@@ -84,14 +84,22 @@ defmodule Randex.Parser do
   defp do_parse("(" <> rest) do
     case rest do
       "?:" <> rest ->
-        parse_group(rest, false)
+        parse_group(rest, %{capture: false})
+
+      "?'" <> rest ->
+        parse_named_group(rest, "'")
+
+      "?<" <> rest ->
+        parse_named_group(rest, ">")
+
+      "?P<" <> rest ->
+        parse_named_group(rest, ">")
 
       "?" <> rest ->
-        [options, rest] = String.split(rest, ")", parts: 2)
-        parse_options(options, rest)
+        parse_options(rest)
 
       _ ->
-        parse_group(rest, true)
+        parse_group(rest)
     end
   end
 
@@ -147,7 +155,14 @@ defmodule Randex.Parser do
     end
   end
 
-  defp parse_group(rest, capture) do
+  defp parse_named_group(rest, terminator) do
+    [name, rest] = String.split(rest, terminator, parts: 2)
+    parse_group(rest, %{name: name})
+  end
+
+  defp parse_group(rest, options \\ %{}) do
+    capture = Map.get(options, :capture, true)
+    name = Map.get(options, :name)
     {inner, rest} = find_matching(rest, "", 0)
 
     fun = fn ast, context ->
@@ -157,7 +172,8 @@ defmodule Randex.Parser do
         [
           %AST.Group{
             values: parse_loop(inner, &do_parse/1, [], %{context | local: %Context.Local{}}),
-            capture: capture
+            capture: capture,
+            name: name
           }
           | ast
         ],
@@ -251,7 +267,8 @@ defmodule Randex.Parser do
     {:cont, fun}
   end
 
-  defp parse_options(options, rest) do
+  defp parse_options(rest) do
+    [options, rest] = String.split(rest, ")", parts: 2)
     options = parse_loop(options, &do_parse_option/1, [], nil)
 
     fun = fn ast, context ->
