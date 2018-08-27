@@ -20,7 +20,12 @@ defmodule Randex.Parser do
     fun = fn old_ast, context ->
       {ast, rest} =
         if Context.mode?(context, :extended) do
-          [comment, rest] = String.split(rest, "\n", parts: 2)
+          [comment, rest] =
+            case String.split(rest, "\n", parts: 2) do
+              [comment, rest] -> [comment, rest]
+              [comment] -> [comment, ""]
+            end
+
           {%AST.Comment{value: comment}, rest}
         else
           {%AST.Char{value: "#"}, rest}
