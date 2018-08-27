@@ -320,19 +320,35 @@ defmodule Randex.Parser do
     fun = fn old_ast, context ->
       {ast, rest} =
         case x do
-          x when x in ["0", "a", "b", "e", "f", "n", "r", "t", "v"] ->
+          x when x in ["a", "b", "e", "f", "n", "r", "t", "v"] ->
             {%AST.Char{value: Macro.unescape_string("\\" <> x)}, rest}
 
           "d" ->
             {%AST.Range{first: %AST.Char{value: "0"}, last: %AST.Char{value: "9"}}, rest}
 
-          <<x::utf8>> when x in 49..57 ->
-            {n, rest} = Integer.parse(<<x::utf8>> <> rest)
+          "x" ->
+            <<hex::binary-2, rest::binary>> = rest
+            {n, ""} = Integer.parse(hex, 16)
+            {%AST.Char{value: <<n::utf8>>}, rest}
 
-            if !class && context.global.group >= n do
-              {%AST.BackReference{number: n}, rest}
-            else
-              {%AST.Char{value: <<n::utf8>>}, rest}
+          <<x::utf8>> when x in 48..57 ->
+            base =
+              case rest do
+                <<x::utf8, y::utf8>> <> _ when x in 48..57 and y in 48..57 ->
+                  8
+
+                _ ->
+                  10
+              end
+
+            {n, rest} = Integer.parse(<<x::utf8>> <> rest, base)
+
+            cond do
+              !class && base == 10 && n > 0 && context.global.group >= n ->
+                {%AST.BackReference{number: n}, rest}
+
+              true ->
+                {%AST.Char{value: <<n::utf8>>}, rest}
             end
 
           _ ->

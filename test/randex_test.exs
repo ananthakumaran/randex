@@ -10,7 +10,7 @@ defmodule RandexTest do
     regex = Regex.compile!(c)
 
     ast = Randex.Parser.parse(c)
-    Logger.info(inspect(ast))
+    Logger.info(inspect(ast, pretty: true))
 
     Randex.Generator.gen(ast)
     |> Enum.take(10)
