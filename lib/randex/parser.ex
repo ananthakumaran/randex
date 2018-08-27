@@ -223,7 +223,7 @@ defmodule Randex.Parser do
             case Integer.parse(rest) do
               {min, rest} ->
                 case rest do
-                  "}" ->
+                  "}" <> rest ->
                     parse_loop(
                       rest,
                       &do_parse/1,
@@ -321,15 +321,32 @@ defmodule Randex.Parser do
       {ast, rest} =
         case x do
           x when x in ["a", "b", "e", "f", "n", "r", "t", "v"] ->
-            {%AST.Char{value: Macro.unescape_string("\\" <> x)}, rest}
+            {[%AST.Char{value: Macro.unescape_string("\\" <> x)}], rest}
+
+          "c" ->
+            <<code::binary-1, rest::binary>> = rest
+            <<code::utf8>> = String.upcase(code)
+            code = code - 64
+
+            code =
+              if code < 0 do
+                code + 128
+              else
+                code
+              end
+
+            {[%AST.Char{value: <<code::utf8>>}], rest}
 
           "d" ->
-            {%AST.Range{first: %AST.Char{value: "0"}, last: %AST.Char{value: "9"}}, rest}
+            {[%AST.Range{first: %AST.Char{value: "0"}, last: %AST.Char{value: "9"}}], rest}
+
+          "s" ->
+            {Enum.map(@whitespaces, &%AST.Char{value: &1}), rest}
 
           "x" ->
             <<hex::binary-2, rest::binary>> = rest
             {n, ""} = Integer.parse(hex, 16)
-            {%AST.Char{value: <<n::utf8>>}, rest}
+            {[%AST.Char{value: <<n::utf8>>}], rest}
 
           <<x::utf8>> when x in 48..57 ->
             base =
@@ -345,20 +362,20 @@ defmodule Randex.Parser do
 
             cond do
               !class && base == 10 && n > 0 && context.global.group >= n ->
-                {%AST.BackReference{number: n}, rest}
+                {[%AST.BackReference{number: n}], rest}
 
               true ->
-                {%AST.Char{value: <<n::utf8>>}, rest}
+                {[%AST.Char{value: <<n::utf8>>}], rest}
             end
 
           _ ->
-            {%AST.Char{value: x}, rest}
+            {[%AST.Char{value: x}], rest}
         end
 
       if class do
-        parse_loop(rest, &do_parse_class/1, [ast | old_ast], context)
+        parse_loop(rest, &do_parse_class/1, ast ++ old_ast, context)
       else
-        parse_loop(rest, &do_parse/1, [ast | old_ast], context)
+        parse_loop(rest, &do_parse/1, ast ++ old_ast, context)
       end
     end
 

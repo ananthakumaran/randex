@@ -1,5 +1,6 @@
 defmodule Randex.Generator do
   alias Randex.AST
+  alias Randex.Utils
 
   def gen(asts) do
     Enum.map(asts, &do_gen/1)
@@ -75,8 +76,8 @@ defmodule Randex.Generator do
         first..last
     end)
     |> Enum.sort_by(fn range -> range.first end)
-    |> non_overlapping([])
-    |> negate_range(negate)
+    |> Utils.non_overlapping([])
+    |> Utils.negate_range(negate)
     |> Enum.map(fn range ->
       StreamData.integer(range)
       |> StreamData.map(&<<&1::utf8>>)
@@ -107,27 +108,5 @@ defmodule Randex.Generator do
           {groups, acc <> string}
       end
     end)
-  end
-
-  defp non_overlapping([], []), do: []
-  defp non_overlapping([x], acc), do: Enum.reverse([x | acc])
-
-  defp non_overlapping([a | [b | rest]], acc) do
-    cond do
-      b.first > a.last -> non_overlapping([b | rest], [a | acc])
-      true -> non_overlapping([a.first..Enum.max([a.last, b.last]) | rest], acc)
-    end
-  end
-
-  defp negate_range(ranges, false), do: ranges
-  defp negate_range(ranges, true), do: negate_range(ranges, 32, [])
-
-  defp negate_range([], low, acc), do: Enum.reverse([low..126 | acc])
-
-  defp negate_range([a | rest], low, acc) do
-    cond do
-      low < a.first -> negate_range(rest, a.last + 1, [low..(a.first - 1) | acc])
-      true -> negate_range(rest, a.last + 1, acc)
-    end
   end
 end

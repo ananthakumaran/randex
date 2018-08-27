@@ -8,9 +8,10 @@ defmodule TestHelper do
   defmacro regtest(name) do
     prefix = name <> " "
 
-    Enum.map(cases(), fn c ->
+    Enum.with_index(cases())
+    |> Enum.map(fn {c, i} ->
       quote do
-        test unquote(prefix) <> unquote(c) do
+        test unquote(prefix) <> unquote(to_string(i)) do
           __MODULE__.unquote(Macro.var(String.to_atom(name), __MODULE__))(unquote(c))
         end
       end
