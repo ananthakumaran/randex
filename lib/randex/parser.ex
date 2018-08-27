@@ -79,6 +79,10 @@ defmodule Randex.Parser do
       "?<" <> rest ->
         parse_named_group(rest, ">")
 
+      "?P=" <> rest ->
+        [name, rest] = String.split(rest, ")", parts: 2)
+        {%AST.BackReference{name: name}, rest}
+
       "?P<" <> rest ->
         parse_named_group(rest, ">")
 

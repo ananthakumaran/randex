@@ -95,11 +95,18 @@ defmodule Randex.Generator do
     List.flatten(values)
     |> Enum.reduce({%{}, ""}, fn value, {groups, acc} ->
       case value do
-        {%AST.Group{number: n}, values} ->
+        {%AST.Group{number: n, name: name}, values} ->
           {sub_groups, string} = do_resolve(values)
-          groups = Map.merge(groups, sub_groups)
 
-          {Map.put(groups, n, string), acc <> string}
+          groups =
+            Map.merge(groups, sub_groups)
+            |> Map.put(n, string)
+            |> Map.put(name, string)
+
+          {groups, acc <> string}
+
+        %AST.BackReference{name: name} when not is_nil(name) ->
+          {groups, acc <> Map.fetch!(groups, name)}
 
         %AST.BackReference{number: n} ->
           {groups, acc <> Map.fetch!(groups, n)}
