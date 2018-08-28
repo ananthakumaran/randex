@@ -591,6 +591,28 @@ xxx[0-9]+$
 
 ((?i)rah)\s+\1
 
+\x00f
+
+\x00fe
+
+\x00ff
+
+\x00ffffffffffffff
+
+\xff
+
+\x5c
+
+\x20Z
+
+ab{3cd
+
+ab{3,cd
+
+ab{3,4a}cd
+
+{4,5a}bc
+
 # 
 # (?i)$
 # 
@@ -605,16 +627,3 @@ xxx[0-9]+$
 # [\41]
 # 
 # \09
-# 
-# \141
-# 
-# \x00f
-# 
-# \x00fe
-# 
-# \x00ff
-# 
-# \x00ffffffffffffff
-# 
-# \xff
-# 

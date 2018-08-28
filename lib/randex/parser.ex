@@ -209,6 +209,8 @@ defmodule Randex.Parser do
         parse_loop(rest, &do_parse/1, [%AST.Char{value: char}], context)
 
       [current | old_ast], context ->
+        old_rest = rest
+
         cond do
           char == "?" && current.__struct__ == AST.Repetition ->
             parse_loop(rest, &do_parse/1, [%{%AST.Lazy{} | value: current} | old_ast], context)
@@ -248,14 +250,31 @@ defmodule Randex.Parser do
                     )
 
                   "," <> rest ->
-                    {max, "}" <> rest} = Integer.parse(rest)
+                    case Integer.parse(rest) do
+                      {max, "}" <> rest} ->
+                        parse_loop(
+                          rest,
+                          &do_parse/1,
+                          [
+                            %AST.Repetition{min: min, max: max, value: current} | old_ast
+                          ],
+                          context
+                        )
 
+                      _ ->
+                        parse_loop(
+                          old_rest,
+                          &do_parse/1,
+                          [%AST.Char{value: char} | [current | old_ast]],
+                          context
+                        )
+                    end
+
+                  _ ->
                     parse_loop(
-                      rest,
+                      old_rest,
                       &do_parse/1,
-                      [
-                        %AST.Repetition{min: min, max: max, value: current} | old_ast
-                      ],
+                      [%AST.Char{value: char} | [current | old_ast]],
                       context
                     )
                 end
@@ -349,8 +368,7 @@ defmodule Randex.Parser do
 
           "x" ->
             <<hex::binary-2, rest::binary>> = rest
-            {n, ""} = Integer.parse(hex, 16)
-            {[%AST.Char{value: <<n::utf8>>}], rest}
+            {[%AST.Char{value: Macro.unescape_string("\\x" <> hex)}], rest}
 
           "k" ->
             {terminator, rest} =
