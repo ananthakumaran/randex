@@ -31,7 +31,7 @@ defmodule TestHelper do
     |> Enum.map(fn {cases, i} ->
       quote do
         defmodule unquote(String.to_atom("RandexTest#{i}")) do
-          use ExUnit.Case
+          use ExUnit.Case, async: true
 
           unquote do
             Enum.map(cases, fn {c, j} ->

@@ -352,6 +352,42 @@ defmodule Randex.Parser do
             {n, ""} = Integer.parse(hex, 16)
             {[%AST.Char{value: <<n::utf8>>}], rest}
 
+          "k" ->
+            {terminator, rest} =
+              case rest do
+                "<" <> rest -> {">", rest}
+                "{" <> rest -> {"}", rest}
+                "'" <> rest -> {"'", rest}
+              end
+
+            [name, rest] = String.split(rest, terminator, parts: 2)
+            {[%AST.BackReference{name: name}], rest}
+
+          "g" ->
+            case rest do
+              "{" <> rest ->
+                [name_or_number, rest] = String.split(rest, "}", parts: 2)
+
+                ast =
+                  case Integer.parse(name_or_number) do
+                    {n, ""} ->
+                      if n >= 0 do
+                        %AST.BackReference{number: n}
+                      else
+                        %AST.BackReference{number: context.global.group + n + 1}
+                      end
+
+                    _ ->
+                      %AST.BackReference{name: name_or_number}
+                  end
+
+                {[ast], rest}
+
+              _ ->
+                {n, rest} = Integer.parse(rest)
+                {[%AST.BackReference{number: n}], rest}
+            end
+
           <<x::utf8>> when x in 48..57 ->
             base =
               case rest do

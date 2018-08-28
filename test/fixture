@@ -533,7 +533,7 @@ a*abc?xyz+pqr{3}ab{2,}xy{4,5}pq{0,6}AB{0,}zz
 
 (ba|b*){1,2}?bc
 
-\ca\cA\c[;\c:
+\ca\cA\c[;\c:\c{
 
 [ab\]cde]
 
@@ -568,6 +568,28 @@ xxx[0-9]+$
 (?P<foo_123>a)(?P=foo_123)
 
 (?P<id>aa)(?P=id)
+
+(?<p1>(?i)rah)\s+\k'p1'
+
+(?<p1>(?i)rah)\s+\k<p1>
+
+(?'p1'(?i)rah)\s+\k{p1}
+
+(?P<p1>(?i)rah)\s+(?P=p1)
+
+(?<p1>(?i)rah)\s+\g{p1}
+
+(ring), \1
+
+(ring), \g1
+
+(ring), \g{1}
+
+(abc(def)ghi)\g{-1}
+
+(sens|respons)e and \1ibility
+
+((?i)rah)\s+\1
 
 # 
 # (?i)$
