@@ -3,22 +3,47 @@ defmodule Randex.Generator do
   alias Randex.Utils
 
   def gen(asts) do
-    Enum.map(asts, &do_gen/1)
-    |> StreamData.fixed_list()
-    |> resolve
+    gen_loop(asts, StreamData.constant({"", %{}}))
+    |> StreamData.map(fn {candidate, _context} -> candidate end)
   end
 
   defp do_gen(%AST.Char{value: char}) do
     StreamData.constant(char)
   end
 
-  defp do_gen(%AST.Group{values: asts} = group) do
-    Enum.map(asts, &do_gen/1)
-    |> StreamData.fixed_list()
-    |> StreamData.map(&{group, &1})
+  defp do_gen(%AST.Group{values: asts, name: name, number: n}) do
+    fun = fn generator ->
+      bind_gen(generator, asts, fn candidate, group_candidate, context ->
+        context =
+          context
+          |> Map.put(n, group_candidate)
+          |> Map.put(name, group_candidate)
+
+        StreamData.constant({candidate <> group_candidate, context})
+      end)
+    end
+
+    {:cont, fun}
   end
 
-  defp do_gen(%AST.BackReference{} = backref), do: StreamData.constant(backref)
+  defp do_gen(%AST.BackReference{} = backref) do
+    fun = fn generator ->
+      StreamData.map(generator, fn {candidate, context} ->
+        value =
+          case backref do
+            %AST.BackReference{name: name} when not is_nil(name) ->
+              Map.fetch!(context, name)
+
+            %AST.BackReference{number: n} ->
+              Map.fetch!(context, n)
+          end
+
+        {candidate <> value, context}
+      end)
+    end
+
+    {:cont, fun}
+  end
 
   defp do_gen(%AST.Class{} = ast) do
     gen_class(ast)
@@ -41,26 +66,52 @@ defmodule Randex.Generator do
   end
 
   defp do_gen(%AST.Lazy{value: value}) do
-    do_gen(value)
+    fun = fn generator ->
+      gen_loop([value], generator)
+    end
+
+    {:cont, fun}
   end
 
   defp do_gen(%AST.Repetition{min: min, max: max, value: ast}) do
-    do_gen(ast)
-    |> StreamData.list_of(min_length: min, max_length: max)
+    fun = fn generator ->
+      bind_gen(generator, [ast], fn candidate, repetition_candidate, context ->
+        StreamData.constant(repetition_candidate)
+        |> StreamData.list_of(min_length: min, max_length: max)
+        |> StreamData.map(fn repeats ->
+          {candidate <> Enum.join(repeats, ""), context}
+        end)
+      end)
+    end
+
+    {:cont, fun}
   end
 
   defp do_gen(%AST.Or{left: left, right: right}) do
-    StreamData.one_of([
-      gen(left),
-      gen(right)
-    ])
+    fun = fn generator ->
+      StreamData.one_of([StreamData.constant(left), StreamData.constant(right)])
+      |> StreamData.bind(fn ast ->
+        gen_loop(ast, generator)
+      end)
+    end
+
+    {:cont, fun}
   end
 
   defp do_gen(%AST.Range{first: first, last: last}) do
-    StreamData.bind({do_gen(first), do_gen(last)}, fn {<<first::utf8>>, <<last::utf8>>} ->
-      StreamData.integer(first..last)
-      |> StreamData.map(&<<&1::utf8>>)
-    end)
+    fun = fn generator ->
+      StreamData.bind({gen([first]), gen([last])}, fn {<<first::utf8>>, <<last::utf8>>} ->
+        StreamData.integer(first..last)
+        |> StreamData.map(&<<&1::utf8>>)
+        |> StreamData.bind(fn char ->
+          StreamData.bind(generator, fn {candidate, context} ->
+            StreamData.constant({candidate <> char, context})
+          end)
+        end)
+      end)
+    end
+
+    {:cont, fun}
   end
 
   defp do_gen(%AST.Dot{}) do
@@ -85,35 +136,32 @@ defmodule Randex.Generator do
     |> StreamData.one_of()
   end
 
-  defp resolve(g) do
-    StreamData.map(g, fn values ->
-      do_resolve(values) |> elem(1)
-    end)
+  defp gen_loop([], generator), do: generator
+
+  defp gen_loop([ast | rest], generator) do
+    case do_gen(ast) do
+      {:cont, fun} ->
+        gen_loop(rest, fun.(generator))
+
+      current ->
+        generator =
+          StreamData.bind(generator, fn {old, context} ->
+            StreamData.bind(current, fn new ->
+              StreamData.constant({old <> new, context})
+            end)
+          end)
+
+        gen_loop(rest, generator)
+    end
   end
 
-  defp do_resolve(values) do
-    List.flatten(values)
-    |> Enum.reduce({%{}, ""}, fn value, {groups, acc} ->
-      case value do
-        {%AST.Group{number: n, name: name}, values} ->
-          {sub_groups, string} = do_resolve(values)
-
-          groups =
-            Map.merge(groups, sub_groups)
-            |> Map.put(n, string)
-            |> Map.put(name, string)
-
-          {groups, acc <> string}
-
-        %AST.BackReference{name: name} when not is_nil(name) ->
-          {groups, acc <> Map.fetch!(groups, name)}
-
-        %AST.BackReference{number: n} ->
-          {groups, acc <> Map.fetch!(groups, n)}
-
-        string ->
-          {groups, acc <> string}
-      end
+  defp bind_gen(generator, sub, callback) do
+    StreamData.bind(generator, fn {candidate, context} ->
+      gen_loop(sub, StreamData.constant({candidate, context}))
+      |> StreamData.bind(fn {new_candidate, context} ->
+        sub_candidate = String.replace_prefix(new_candidate, candidate, "")
+        callback.(candidate, sub_candidate, context)
+      end)
     end)
   end
 end
