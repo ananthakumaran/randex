@@ -1,25 +1,33 @@
 defmodule Randex.Generator do
   alias Randex.AST
   alias Randex.Utils
+  require Logger
+  import Randex.Amb
+
+  defmodule Context do
+    defstruct group: %{}, stack: []
+  end
 
   def gen(asts) do
-    gen_loop(asts, StreamData.constant({"", %{}}))
-    |> StreamData.map(fn {candidate, _context} -> candidate end)
+    gen_loop(asts, constant({"", %Context{}}))
+    |> map(fn {candidate, _context} -> candidate end)
   end
 
   defp do_gen(%AST.Char{value: char}) do
-    StreamData.constant(char)
+    constant(char)
   end
 
   defp do_gen(%AST.Group{values: asts, name: name, number: n}) do
     fun = fn generator ->
       bind_gen(generator, asts, fn candidate, group_candidate, context ->
-        context =
-          context
+        group =
+          context.group
           |> Map.put(n, group_candidate)
           |> Map.put(name, group_candidate)
 
-        StreamData.constant({candidate <> group_candidate, context})
+        context = %{context | group: group}
+
+        constant({candidate <> group_candidate, context})
       end)
     end
 
@@ -28,18 +36,27 @@ defmodule Randex.Generator do
 
   defp do_gen(%AST.BackReference{} = backref) do
     fun = fn generator ->
-      StreamData.map(generator, fn {candidate, context} ->
-        value =
-          case backref do
-            %AST.BackReference{name: name} when not is_nil(name) ->
-              Map.fetch!(context, name)
+      bind_filter(
+        generator,
+        fn {candidate, context} ->
+          Logger.info(inspect({candidate, context}))
 
-            %AST.BackReference{number: n} ->
-              Map.fetch!(context, n)
+          value =
+            case backref do
+              %AST.BackReference{name: name} when not is_nil(name) ->
+                Map.get(context.group, name)
+
+              %AST.BackReference{number: n} ->
+                Map.get(context.group, n)
+            end
+
+          if value do
+            {:cont, constant({candidate <> value, context})}
+          else
+            :skip
           end
-
-        {candidate <> value, context}
-      end)
+        end
+      )
     end
 
     {:cont, fun}
@@ -50,19 +67,19 @@ defmodule Randex.Generator do
   end
 
   defp do_gen(%AST.Circumflex{}) do
-    StreamData.constant("")
+    constant("")
   end
 
   defp do_gen(%AST.Dollar{}) do
-    StreamData.constant("")
+    constant("")
   end
 
   defp do_gen(%AST.Option{}) do
-    StreamData.constant("")
+    constant("")
   end
 
   defp do_gen(%AST.Comment{}) do
-    StreamData.constant("")
+    constant("")
   end
 
   defp do_gen(%AST.Lazy{value: value}) do
@@ -76,9 +93,9 @@ defmodule Randex.Generator do
   defp do_gen(%AST.Repetition{min: min, max: max, value: ast}) do
     fun = fn generator ->
       bind_gen(generator, [ast], fn candidate, repetition_candidate, context ->
-        StreamData.constant(repetition_candidate)
-        |> StreamData.list_of(min_length: min, max_length: max)
-        |> StreamData.map(fn repeats ->
+        constant(repetition_candidate)
+        |> list_of(min, max)
+        |> map(fn repeats ->
           {candidate <> Enum.join(repeats, ""), context}
         end)
       end)
@@ -89,8 +106,8 @@ defmodule Randex.Generator do
 
   defp do_gen(%AST.Or{left: left, right: right}) do
     fun = fn generator ->
-      StreamData.one_of([StreamData.constant(left), StreamData.constant(right)])
-      |> StreamData.bind(fn ast ->
+      member_of([left, right])
+      |> bind(fn ast ->
         gen_loop(ast, generator)
       end)
     end
@@ -100,12 +117,14 @@ defmodule Randex.Generator do
 
   defp do_gen(%AST.Range{first: first, last: last}) do
     fun = fn generator ->
-      StreamData.bind({gen([first]), gen([last])}, fn {<<first::utf8>>, <<last::utf8>>} ->
-        StreamData.integer(first..last)
-        |> StreamData.map(&<<&1::utf8>>)
-        |> StreamData.bind(fn char ->
-          StreamData.bind(generator, fn {candidate, context} ->
-            StreamData.constant({candidate <> char, context})
+      bind(gen([first]), fn <<first::utf8>> ->
+        bind(gen([last]), fn <<last::utf8>> ->
+          integer(first..last)
+          |> map(&<<&1::utf8>>)
+          |> bind(fn char ->
+            bind(generator, fn {candidate, context} ->
+              constant({candidate <> char, context})
+            end)
           end)
         end)
       end)
@@ -115,7 +134,7 @@ defmodule Randex.Generator do
   end
 
   defp do_gen(%AST.Dot{}) do
-    StreamData.string(:ascii, length: 1)
+    string()
   end
 
   defp gen_class(%AST.Class{values: asts, negate: negate}) do
@@ -130,10 +149,10 @@ defmodule Randex.Generator do
     |> Utils.non_overlapping([])
     |> Utils.negate_range(negate)
     |> Enum.map(fn range ->
-      StreamData.integer(range)
-      |> StreamData.map(&<<&1::utf8>>)
+      integer(range)
+      |> map(&<<&1::utf8>>)
     end)
-    |> StreamData.one_of()
+    |> one_of()
   end
 
   defp gen_loop([], generator), do: generator
@@ -145,9 +164,9 @@ defmodule Randex.Generator do
 
       current ->
         generator =
-          StreamData.bind(generator, fn {old, context} ->
-            StreamData.bind(current, fn new ->
-              StreamData.constant({old <> new, context})
+          bind(generator, fn {old, context} ->
+            bind(current, fn new ->
+              constant({old <> new, context})
             end)
           end)
 
@@ -156,12 +175,18 @@ defmodule Randex.Generator do
   end
 
   defp bind_gen(generator, sub, callback) do
-    StreamData.bind(generator, fn {candidate, context} ->
-      gen_loop(sub, StreamData.constant({candidate, context}))
-      |> StreamData.bind(fn {new_candidate, context} ->
-        sub_candidate = String.replace_prefix(new_candidate, candidate, "")
-        callback.(candidate, sub_candidate, context)
+    generator =
+      map(generator, fn {candidate, context} ->
+        context = %{context | stack: [candidate | context.stack]}
+        {candidate, context}
       end)
+
+    gen_loop(sub, generator)
+    |> bind(fn {new_candidate, context} ->
+      [candidate | rest] = context.stack
+      context = %{context | stack: rest}
+      sub_candidate = String.replace_prefix(new_candidate, candidate, "")
+      callback.(candidate, sub_candidate, context)
     end)
   end
 end

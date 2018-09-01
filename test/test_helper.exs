@@ -22,6 +22,13 @@ defmodule TestHelper do
     end)
   end
 
+  defmacro assert_amb(amb, expected) do
+    quote do
+      actual = Enum.to_list(to_stream(unquote(amb)))
+      assert actual == unquote(expected)
+    end
+  end
+
   defmacro regtest(name) do
     prefix = name <> " "
 
