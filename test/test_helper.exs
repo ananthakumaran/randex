@@ -16,7 +16,7 @@ defmodule TestHelper do
     Logger.info("AST: " <> inspect(ast, pretty: true))
 
     Randex.Generator.gen(ast)
-    |> Enum.take(10)
+    |> Enum.take(100)
     |> Enum.each(fn sample ->
       assert sample =~ regex
     end)

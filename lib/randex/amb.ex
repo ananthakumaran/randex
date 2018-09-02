@@ -28,9 +28,10 @@ defmodule Randex.Amb do
   end
 
   def string() do
-    Stream.map(?\s..?~, fn x ->
+    Enum.map(?\s..?~, fn x ->
       List.to_string([x])
     end)
+    |> Enum.shuffle()
   end
 
   def list_of(amb, min, max) do

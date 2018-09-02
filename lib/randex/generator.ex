@@ -1,16 +1,15 @@
 defmodule Randex.Generator do
   alias Randex.AST
   alias Randex.Utils
-  require Logger
   import Randex.Amb
 
-  defmodule Context do
+  defmodule State do
     defstruct group: %{}, stack: []
   end
 
   def gen(asts) do
-    gen_loop(asts, constant({"", %Context{}}))
-    |> map(fn {candidate, _context} -> candidate end)
+    gen_loop(asts, constant({"", %State{}}))
+    |> map(fn {candidate, _state} -> candidate end)
   end
 
   defp do_gen(%AST.Char{value: char}) do
@@ -19,15 +18,15 @@ defmodule Randex.Generator do
 
   defp do_gen(%AST.Group{values: asts, name: name, number: n}) do
     fun = fn generator ->
-      bind_gen(generator, asts, fn candidate, group_candidate, context ->
+      bind_gen(generator, asts, fn candidate, group_candidate, state ->
         group =
-          context.group
+          state.group
           |> Map.put(n, group_candidate)
           |> Map.put(name, group_candidate)
 
-        context = %{context | group: group}
+        state = %{state | group: group}
 
-        constant({candidate <> group_candidate, context})
+        constant({candidate <> group_candidate, state})
       end)
     end
 
@@ -38,20 +37,18 @@ defmodule Randex.Generator do
     fun = fn generator ->
       bind_filter(
         generator,
-        fn {candidate, context} ->
-          Logger.info(inspect({candidate, context}))
-
+        fn {candidate, state} ->
           value =
             case backref do
               %AST.BackReference{name: name} when not is_nil(name) ->
-                Map.get(context.group, name)
+                Map.get(state.group, name)
 
               %AST.BackReference{number: n} ->
-                Map.get(context.group, n)
+                Map.get(state.group, n)
             end
 
           if value do
-            {:cont, constant({candidate <> value, context})}
+            {:cont, constant({candidate <> value, state})}
           else
             :skip
           end
@@ -92,11 +89,11 @@ defmodule Randex.Generator do
 
   defp do_gen(%AST.Repetition{min: min, max: max, value: ast}) do
     fun = fn generator ->
-      bind_gen(generator, [ast], fn candidate, repetition_candidate, context ->
+      bind_gen(generator, [ast], fn candidate, repetition_candidate, state ->
         constant(repetition_candidate)
         |> list_of(min, max)
         |> map(fn repeats ->
-          {candidate <> Enum.join(repeats, ""), context}
+          {candidate <> Enum.join(repeats, ""), state}
         end)
       end)
     end
@@ -122,8 +119,8 @@ defmodule Randex.Generator do
           integer(first..last)
           |> map(&<<&1::utf8>>)
           |> bind(fn char ->
-            bind(generator, fn {candidate, context} ->
-              constant({candidate <> char, context})
+            bind(generator, fn {candidate, state} ->
+              constant({candidate <> char, state})
             end)
           end)
         end)
@@ -164,9 +161,9 @@ defmodule Randex.Generator do
 
       current ->
         generator =
-          bind(generator, fn {old, context} ->
+          bind(generator, fn {old, state} ->
             bind(current, fn new ->
-              constant({old <> new, context})
+              constant({old <> new, state})
             end)
           end)
 
@@ -176,17 +173,17 @@ defmodule Randex.Generator do
 
   defp bind_gen(generator, sub, callback) do
     generator =
-      map(generator, fn {candidate, context} ->
-        context = %{context | stack: [candidate | context.stack]}
-        {candidate, context}
+      map(generator, fn {candidate, state} ->
+        state = %{state | stack: [candidate | state.stack]}
+        {candidate, state}
       end)
 
     gen_loop(sub, generator)
-    |> bind(fn {new_candidate, context} ->
-      [candidate | rest] = context.stack
-      context = %{context | stack: rest}
+    |> bind(fn {new_candidate, state} ->
+      [candidate | rest] = state.stack
+      state = %{state | stack: rest}
       sub_candidate = String.replace_prefix(new_candidate, candidate, "")
-      callback.(candidate, sub_candidate, context)
+      callback.(candidate, sub_candidate, state)
     end)
   end
 end
