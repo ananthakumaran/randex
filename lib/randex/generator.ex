@@ -89,12 +89,16 @@ defmodule Randex.Generator do
 
   defp do_gen(%AST.Repetition{min: min, max: max, value: ast}) do
     fun = fn generator ->
-      bind_gen(generator, [ast], fn candidate, repetition_candidate, state ->
-        constant(repetition_candidate)
-        |> list_of(min, max)
-        |> map(fn repeats ->
-          {candidate <> Enum.join(repeats, ""), state}
-        end)
+      max =
+        if max == :infinity do
+          min + 100
+        else
+          max
+        end
+
+      integer(min..max)
+      |> bind(fn n ->
+        repeat(generator, n, fn g -> gen_loop([ast], g) end)
       end)
     end
 

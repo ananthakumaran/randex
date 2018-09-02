@@ -34,20 +34,12 @@ defmodule Randex.Amb do
     |> Enum.shuffle()
   end
 
-  def list_of(amb, min, max) do
-    max =
-      if max == :infinity do
-        100
-      else
-        max
-      end
-
-    Stream.map(min..max, fn x ->
-      Stream.unfold(x, fn
-        0 -> nil
-        n -> {amb, n - 1}
-      end)
-    end)
+  def repeat(amb, n, fun) do
+    if n == 0 do
+      amb
+    else
+      repeat(fun.(amb), n - 1, fun)
+    end
   end
 
   def bind_filter(s, fun) do
