@@ -50,4 +50,12 @@ defmodule Randex.AST do
   defmodule BackReference do
     defstruct [:name, :number]
   end
+
+  defmodule LookAhead do
+    defstruct [:positive, :value]
+  end
+
+  defmodule LookBehind do
+    defstruct [:positive, :value]
+  end
 end

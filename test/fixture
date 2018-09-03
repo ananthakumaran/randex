@@ -633,10 +633,63 @@ ab{3,4a}cd
 
 (19|20)\d\d([- /.])(0[1-9]|1[012])\2(0[1-9]|[12][0-9]|3[01])
 
-
 ((Exercitationem|Perferendis|Perspiciatis|Laborum|Eveniet|Sunt|Iure|Nam|Nobis|Eum|Cum|Officiis|Excepturi|Odio|Consectetur|Quasi|Aut|Quisquam|Vel|Eligendi|Itaque|Non|Odit|Tempore|Quaerat|Dignissimos|Facilis|Neque|Nihil|Expedita|Vitae|Vero|Ipsum|Nisi|Animi|Cumque|Pariatur|Velit|Modi|Natus|Iusto|Eaque|Sequi|Illo|Sed|Ex|Et|Voluptatibus|Tempora|Veritatis|Ratione|Assumenda|Incidunt|Nostrum|Placeat|Aliquid|Fuga|Provident|Praesentium|Rem|Necessitatibus|Suscipit|Adipisci|Quidem|Possimus|Voluptas|Debitis|Sint|Accusantium|Unde|Sapiente|Voluptate|Qui|Aspernatur|Laudantium|Soluta|Amet|Quo|Aliquam|Saepe|Culpa|Libero|Ipsa|Dicta|Reiciendis|Nesciunt|Doloribus|Autem|Impedit|Minima|Maiores|Repudiandae|Ipsam|Obcaecati|Ullam|Enim|Totam|Delectus|Ducimus|Quis|Voluptates|Dolores|Molestiae|Harum|Dolorem|Quia|Voluptatem|Molestias|Magni|Distinctio|Omnis|Illum|Dolorum|Voluptatum|Ea|Quas|Quam|Corporis|Quae|Blanditiis|Atque|Deserunt|Laboriosam|Earum|Consequuntur|Hic|Cupiditate|Quibusdam|Accusamus|Ut|Rerum|Error|Minus|Eius|Ab|Ad|Nemo|Fugit|Officia|At|In|Id|Quos|Reprehenderit|Numquam|Iste|Fugiat|Sit|Inventore|Beatae|Repellendus|Magnam|Recusandae|Quod|Explicabo|Doloremque|Aperiam|Consequatur|Asperiores|Commodi|Optio|Dolor|Labore|Temporibus|Repellat|Veniam|Architecto|Est|Esse|Mollitia|Nulla|A|Similique|Eos|Alias|Dolore|Tenetur|Deleniti|Porro|Facere|Maxime|Corrupti)(, {2,12}){0,5}[.?] ){1,4}
 
 (1[0-2]|0[1-9])(:[0-5]\d){2} (A|P)M
+
+foo(?!bar)(.*)
+
+\w+(?<=0)
+
+foo(?!bar)
+
+(?!foo)bar
+
+^(?=a).$
+
+^(?!a)[a-b]$
+
+.*(?<!foo)bar
+
+ab[a-d]*(?<=abc|abde)
+
+^(?=ab(de))(abd)(e)
+
+(?!(ab)de|x)(abd)(f)
+
+(?=(ab(cd)))(ab)
+
+[\da-f](\.[\da-f])*$
+
+\".*\"\s*(;.*)?$
+
+$
+
+(?x)  ^    a   (?# begins with a)  b\sc (?# then b c) $ (?# then end)
+
+(?x)   ^    a   (?# begins with a)  b\sc (?# then b c) $ (?# then end)
+
+   a\ b[c ]d       $
+
+^(a(b(c)))(d(e(f)))(h(i(j)))(k(l(m)))$
+
+^(?:a(b(c)))(?:d(e(f)))(?:h(i(j)))(?:k(l(m)))$
+
+^[\w][\W][\s][\S][\d][\D][\b][\n]]
+
+^[.^$|()*+?{,}]+
+
+^a*\w
+
+^a*?\w
+
+^a+\w
+
+^a+?\w
+
+^\d{8}\w{2,}
+
+^[aeiou\d]{4,5}$
 
 # 
 # (?i)$

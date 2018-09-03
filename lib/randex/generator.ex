@@ -59,6 +59,62 @@ defmodule Randex.Generator do
     {:cont, fun}
   end
 
+  defp do_gen(%AST.LookBehind{positive: positive, value: value}) do
+    fun = fn generator ->
+      bind_filter(
+        generator,
+        fn {candidate, state} ->
+          value =
+            if positive do
+              candidate =~ value
+            else
+              !(candidate =~ value)
+            end
+
+          if value do
+            {:cont, constant({candidate, state})}
+          else
+            :skip
+          end
+        end
+      )
+    end
+
+    {:cont, fun}
+  end
+
+  defp do_gen(%AST.LookAhead{positive: positive, value: value}) do
+    fun = fn generator, rest ->
+      generator =
+        map(generator, fn {candidate, state} ->
+          state = %{state | stack: [candidate | state.stack]}
+          {candidate, state}
+        end)
+
+      gen_loop(rest, generator)
+      |> bind_filter(fn {new_candidate, state} ->
+        [candidate | rest] = state.stack
+        state = %{state | stack: rest}
+        sub_candidate = String.replace_prefix(new_candidate, candidate, "")
+
+        value =
+          if positive do
+            sub_candidate =~ value
+          else
+            !(sub_candidate =~ value)
+          end
+
+        if value do
+          {:cont, constant({new_candidate, state})}
+        else
+          :skip
+        end
+      end)
+    end
+
+    {:cont_rest, fun}
+  end
+
   defp do_gen(%AST.Class{} = ast) do
     gen_class(ast)
   end
@@ -140,10 +196,13 @@ defmodule Randex.Generator do
 
   defp gen_class(%AST.Class{values: asts, negate: negate}) do
     Enum.map(asts, fn
-      %AST.Char{value: <<char::utf8>>} ->
+      %AST.Char{value: <<char::integer>>} ->
         char..char
 
-      %AST.Range{first: %AST.Char{value: <<first::utf8>>}, last: %AST.Char{value: <<last::utf8>>}} ->
+      %AST.Range{
+        first: %AST.Char{value: <<first::integer>>},
+        last: %AST.Char{value: <<last::integer>>}
+      } ->
         first..last
     end)
     |> Enum.sort_by(fn range -> range.first end)
@@ -162,6 +221,9 @@ defmodule Randex.Generator do
     case do_gen(ast) do
       {:cont, fun} ->
         gen_loop(rest, fun.(generator))
+
+      {:cont_rest, fun} ->
+        fun.(generator, rest)
 
       current ->
         generator =

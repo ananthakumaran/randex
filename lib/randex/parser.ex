@@ -1,10 +1,9 @@
 defmodule Randex.Parser do
   alias Randex.Context
   alias Randex.AST
+  alias Randex.Utils
 
-  @whitespaces [" ", "\n", "\t"]
-  @whitespace_codes Enum.map(@whitespaces, fn <<x::utf8>> -> x end)
-
+  @whitespaces [?\s, ?\n, ?\t, ?\v, ?\r, ?\f]
   def parse(string, context \\ %Context{global: %Context.Global{}, local: %Context.Local{}}) do
     {ast, _context} = parse_loop(string, &do_parse/1, [], context)
     ast
@@ -37,7 +36,7 @@ defmodule Randex.Parser do
     {:cont, fun}
   end
 
-  defp do_parse(<<x::utf8>> <> rest) when x in @whitespace_codes do
+  defp do_parse(<<x::utf8>> <> rest) when x in @whitespaces do
     fun = fn old_ast, context ->
       if Context.mode?(context, :extended) do
         parse_loop(rest, &do_parse/1, old_ast, context)
@@ -75,6 +74,18 @@ defmodule Randex.Parser do
 
       "?'" <> rest ->
         parse_named_group(rest, "'")
+
+      "?=" <> rest ->
+        parse_look(rest, %AST.LookAhead{positive: true})
+
+      "?!" <> rest ->
+        parse_look(rest, %AST.LookAhead{positive: false})
+
+      "?<=" <> rest ->
+        parse_look(rest, %AST.LookBehind{positive: true})
+
+      "?<!" <> rest ->
+        parse_look(rest, %AST.LookBehind{positive: false})
 
       "?<" <> rest ->
         parse_named_group(rest, ">")
@@ -147,6 +158,18 @@ defmodule Randex.Parser do
       {result, rest} ->
         parse_loop(rest, parser, [result | ast], context)
     end
+  end
+
+  defp parse_look(rest, ast) do
+    {regex, rest} = find_matching(rest, "", 0)
+
+    regex =
+      case ast do
+        %AST.LookBehind{} -> "(?:" <> regex <> ")$"
+        _ -> regex
+      end
+
+    {%{ast | value: Regex.compile!(regex)}, rest}
   end
 
   defp parse_named_group(rest, terminator) do
@@ -339,6 +362,74 @@ defmodule Randex.Parser do
     {option, rest}
   end
 
+  defp charset(code, inside_class) do
+    set =
+      case String.downcase(code) do
+        "d" ->
+          [?0..?9]
+
+        "h" ->
+          [
+            "\u0009",
+            "\u0020",
+            "\u00A0",
+            "\u1680",
+            "\u180E",
+            "\u2000",
+            "\u2001",
+            "\u2002",
+            "\u2003",
+            "\u2004",
+            "\u2005",
+            "\u2006",
+            "\u2007",
+            "\u2008",
+            "\u2009",
+            "\u200A",
+            "\u202F",
+            "\u205F",
+            "\u3000"
+          ]
+
+        "s" ->
+          @whitespaces
+
+        "v" ->
+          ["\u000A", "\u000B", "\u000C", "\u000D", "\u0085", "\u2028", "\u2029"]
+
+        "w" ->
+          [?_, ?0..?9, ?A..?Z, ?a..?z]
+      end
+
+    asts =
+      Enum.map(set, fn
+        x when is_binary(x) ->
+          [x] = String.to_charlist(x)
+          x..x
+
+        x when is_integer(x) ->
+          x..x
+
+        x ->
+          x
+      end)
+      |> Enum.sort_by(fn range -> range.first end)
+      |> Utils.non_overlapping([])
+      |> Utils.negate_range(code != String.downcase(code))
+      |> Enum.map(fn range ->
+        %AST.Range{
+          first: %AST.Char{value: <<range.first::utf8>>},
+          last: %AST.Char{value: <<range.last::utf8>>}
+        }
+      end)
+
+    if inside_class do
+      asts
+    else
+      [%AST.Class{values: asts, negate: false}]
+    end
+  end
+
   defp escape(x, rest, class) do
     fun = fn old_ast, context ->
       {ast, rest} =
@@ -360,11 +451,8 @@ defmodule Randex.Parser do
 
             {[%AST.Char{value: <<code::utf8>>}], rest}
 
-          "d" ->
-            {[%AST.Range{first: %AST.Char{value: "0"}, last: %AST.Char{value: "9"}}], rest}
-
-          "s" ->
-            {Enum.map(@whitespaces, &%AST.Char{value: &1}), rest}
+          x when x in ["d", "D", "h", "s", "S", "v", "w", "W"] ->
+            {charset(x, class), rest}
 
           "x" ->
             <<hex::binary-2, rest::binary>> = rest
