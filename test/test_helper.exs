@@ -24,7 +24,7 @@ defmodule TestHelper do
 
   defmacro assert_amb(amb, expected) do
     quote do
-      actual = Enum.to_list(to_stream(unquote(amb)))
+      actual = Enum.to_list(unquote(amb))
       assert actual == unquote(expected)
     end
   end

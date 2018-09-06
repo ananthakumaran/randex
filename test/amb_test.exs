@@ -5,20 +5,20 @@ defmodule AmbTest do
   use ExUnit.Case
 
   test "either" do
-    assert_amb(either(1, 2), [1, 2])
+    assert_amb(member_of([1, 2]), [1, 2])
   end
 
   test "bind" do
     assert_amb(
-      bind(either(1, 2), fn x ->
+      bind(member_of([1, 2]), fn x ->
         constant(x)
       end),
       [1, 2]
     )
 
     assert_amb(
-      bind(either(1, 2), fn x ->
-        bind(either(3, 4), fn y ->
+      bind(member_of([1, 2]), fn x ->
+        bind(member_of([3, 4]), fn y ->
           constant({x, y})
         end)
       end),

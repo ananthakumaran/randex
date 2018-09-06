@@ -1,18 +1,6 @@
 defmodule Randex.Amb do
-  def to_stream(amb) do
-    amb
-  end
-
-  def fail() do
-    []
-  end
-
   def constant(value) do
     [value]
-  end
-
-  def either(a, b) do
-    [a, b]
   end
 
   def member_of(list) do
