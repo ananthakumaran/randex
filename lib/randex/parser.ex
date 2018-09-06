@@ -437,6 +437,9 @@ defmodule Randex.Parser do
           x when x in ["a", "b", "e", "f", "n", "r", "t", "v"] ->
             {[%AST.Char{value: Macro.unescape_string("\\" <> x)}], rest}
 
+          x when x in ["A", "Z"] ->
+            {[%AST.Assertion{value: x}], rest}
+
           "c" ->
             <<code::binary-1, rest::binary>> = rest
             <<code::utf8>> = String.upcase(code)

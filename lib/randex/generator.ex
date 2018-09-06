@@ -104,12 +104,51 @@ defmodule Randex.Generator do
     {:cont_rest, fun}
   end
 
-  defp do_gen(%AST.Class{} = ast) do
-    gen_class(ast)
+  defp do_gen(%AST.Assertion{value: value}) when value in ["^", "A"] do
+    fun = fn generator ->
+      bind_filter(
+        generator,
+        fn {candidate, state} ->
+          valid =
+            case value do
+              "^" -> candidate == ""
+              "A" -> candidate == ""
+            end
+
+          if valid do
+            {:cont, constant({candidate, state})}
+          else
+            :skip
+          end
+        end
+      )
+    end
+
+    {:cont, fun}
   end
 
-  defp do_gen(%AST.Assertion{}) do
-    constant("")
+  defp do_gen(%AST.Assertion{value: value}) when value in ["$", "Z"] do
+    fun = fn generator, rest ->
+      bind_gen(generator, rest, &bind_filter/2, fn candidate, sub_candidate, state ->
+        valid =
+          case value do
+            "$" -> sub_candidate == ""
+            "Z" -> sub_candidate == ""
+          end
+
+        if valid do
+          {:cont, constant({candidate <> sub_candidate, state})}
+        else
+          :skip
+        end
+      end)
+    end
+
+    {:cont_rest, fun}
+  end
+
+  defp do_gen(%AST.Class{} = ast) do
+    gen_class(ast)
   end
 
   defp do_gen(%AST.Option{}) do
