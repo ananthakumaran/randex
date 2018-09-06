@@ -18,7 +18,7 @@ defmodule Randex.Generator do
 
   defp do_gen(%AST.Group{values: asts, name: name, number: n}) do
     fun = fn generator ->
-      bind_gen(generator, asts, fn candidate, group_candidate, state ->
+      bind_gen(generator, asts, &map/2, fn candidate, group_candidate, state ->
         group =
           state.group
           |> Map.put(n, group_candidate)
@@ -26,7 +26,7 @@ defmodule Randex.Generator do
 
         state = %{state | group: group}
 
-        constant({candidate <> group_candidate, state})
+        {candidate <> group_candidate, state}
       end)
     end
 
@@ -85,18 +85,7 @@ defmodule Randex.Generator do
 
   defp do_gen(%AST.LookAhead{positive: positive, value: value}) do
     fun = fn generator, rest ->
-      generator =
-        map(generator, fn {candidate, state} ->
-          state = %{state | stack: [candidate | state.stack]}
-          {candidate, state}
-        end)
-
-      gen_loop(rest, generator)
-      |> bind_filter(fn {new_candidate, state} ->
-        [candidate | rest] = state.stack
-        state = %{state | stack: rest}
-        sub_candidate = String.replace_prefix(new_candidate, candidate, "")
-
+      bind_gen(generator, rest, &bind_filter/2, fn candidate, sub_candidate, state ->
         value =
           if positive do
             sub_candidate =~ value
@@ -105,7 +94,7 @@ defmodule Randex.Generator do
           end
 
         if value do
-          {:cont, constant({new_candidate, state})}
+          {:cont, constant({candidate <> sub_candidate, state})}
         else
           :skip
         end
@@ -233,7 +222,7 @@ defmodule Randex.Generator do
     end
   end
 
-  defp bind_gen(generator, sub, callback) do
+  defp bind_gen(generator, sub, combiner, callback) do
     generator =
       map(generator, fn {candidate, state} ->
         state = %{state | stack: [candidate | state.stack]}
@@ -241,7 +230,7 @@ defmodule Randex.Generator do
       end)
 
     gen_loop(sub, generator)
-    |> bind(fn {new_candidate, state} ->
+    |> combiner.(fn {new_candidate, state} ->
       [candidate | rest] = state.stack
       state = %{state | stack: rest}
       sub_candidate = String.replace_prefix(new_candidate, candidate, "")
