@@ -119,11 +119,7 @@ defmodule Randex.Generator do
     gen_class(ast)
   end
 
-  defp do_gen(%AST.Circumflex{}) do
-    constant("")
-  end
-
-  defp do_gen(%AST.Dollar{}) do
+  defp do_gen(%AST.Assertion{}) do
     constant("")
   end
 

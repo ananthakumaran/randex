@@ -11,8 +11,8 @@ defmodule Randex.Parser do
 
   defp do_parse("\\" <> <<x::utf8>> <> rest), do: escape(<<x::utf8>>, rest, false)
 
-  defp do_parse("^" <> rest), do: {%AST.Circumflex{}, rest}
-  defp do_parse("$" <> rest), do: {%AST.Dollar{}, rest}
+  defp do_parse("^" <> rest), do: {%AST.Assertion{value: "^"}, rest}
+  defp do_parse("$" <> rest), do: {%AST.Assertion{value: "$"}, rest}
   defp do_parse("." <> rest), do: {%AST.Dot{}, rest}
 
   defp do_parse("#" <> rest) do

@@ -3,12 +3,8 @@ defmodule Randex.AST do
     defstruct [:value]
   end
 
-  defmodule Circumflex do
-    defstruct []
-  end
-
-  defmodule Dollar do
-    defstruct []
+  defmodule Assertion do
+    defstruct [:value]
   end
 
   defmodule Dot do
