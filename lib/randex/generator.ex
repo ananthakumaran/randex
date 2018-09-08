@@ -10,6 +10,7 @@ defmodule Randex.Generator do
   def gen(asts) do
     gen_loop(asts, constant({"", %State{}}))
     |> map(fn {candidate, _state} -> candidate end)
+    |> to_stream
   end
 
   defp do_gen(%AST.Char{value: char}) do
@@ -224,17 +225,17 @@ defmodule Randex.Generator do
         char..char
 
       %AST.Range{
-        first: %AST.Char{value: <<first::integer>>},
-        last: %AST.Char{value: <<last::integer>>}
+        first: %AST.Char{value: first},
+        last: %AST.Char{value: last}
       } ->
-        first..last
+        Utils.string_to_integer(first)..Utils.string_to_integer(last)
     end)
     |> Enum.sort_by(fn range -> range.first end)
     |> Utils.non_overlapping([])
     |> Utils.negate_range(negate)
     |> Enum.map(fn range ->
       integer(range)
-      |> map(&<<&1::utf8>>)
+      |> map(&Utils.integer_to_string(&1))
     end)
     |> one_of()
   end

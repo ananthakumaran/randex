@@ -22,4 +22,13 @@ defmodule Randex.Utils do
       true -> negate_range(rest, a.last + 1, acc)
     end
   end
+
+  def string_to_integer(a) do
+    [x] = String.to_charlist(a)
+    x
+  end
+
+  def integer_to_string(x) do
+    to_string([x])
+  end
 end
