@@ -12,7 +12,7 @@ defmodule Randex.AST do
   end
 
   defmodule Class do
-    defstruct [:values, negate: false]
+    defstruct [:values, negate: false, caseless: false]
   end
 
   defmodule Range do

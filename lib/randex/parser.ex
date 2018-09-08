@@ -122,7 +122,7 @@ defmodule Randex.Parser do
       end
 
     {ast, _context} = parse_loop(string, &do_parse_class/1, [], context)
-    %AST.Class{values: ast, negate: negate}
+    %AST.Class{values: ast, negate: negate, caseless: Context.mode?(context, :caseless)}
   end
 
   defp do_parse_class("\\" <> <<x::utf8>> <> rest), do: escape(<<x::utf8>>, rest, true)

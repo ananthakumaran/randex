@@ -219,7 +219,7 @@ defmodule Randex.Generator do
     string()
   end
 
-  defp gen_class(%AST.Class{values: asts, negate: negate}) do
+  defp gen_class(%AST.Class{values: asts, negate: negate, caseless: caseless}) do
     Enum.map(asts, fn
       %AST.Char{value: <<char::integer>>} ->
         char..char
@@ -229,6 +229,14 @@ defmodule Randex.Generator do
         last: %AST.Char{value: last}
       } ->
         Utils.string_to_integer(first)..Utils.string_to_integer(last)
+    end)
+    |> Enum.flat_map(fn range ->
+      if caseless &&
+           !(range.last < ?A || range.first > ?z || (range.first > ?Z && range.last < ?a)) do
+        Utils.swap_case(range)
+      else
+        [range]
+      end
     end)
     |> Enum.sort_by(fn range -> range.first end)
     |> Utils.non_overlapping([])

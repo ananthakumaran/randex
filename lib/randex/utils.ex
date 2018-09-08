@@ -23,6 +23,18 @@ defmodule Randex.Utils do
     end
   end
 
+  def swap_case(range) do
+    cond do
+      range.first < ?A -> [range.first..(?A - 1)] ++ swap_case(?A..range.last)
+      range.last <= ?Z -> [range, (range.first + 32)..(range.last + 32)]
+      range.first <= ?Z -> swap_case(range.first..?Z) ++ swap_case((?Z + 1)..range.last)
+      range.last < ?a -> [range]
+      range.first < ?a -> [range.first..(?a - 1)] ++ swap_case(?a..range.last)
+      range.last <= ?z -> [range, (range.first - 32)..(range.last - 32)]
+      range.last > ?z -> swap_case(range.first..?z) ++ [(?z + 1)..range.last]
+    end
+  end
+
   def string_to_integer(a) do
     [x] = String.to_charlist(a)
     x
