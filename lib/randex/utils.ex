@@ -1,4 +1,6 @@
 defmodule Randex.Utils do
+  @moduledoc false
+
   def non_overlapping([], []), do: []
   def non_overlapping([x], acc), do: Enum.reverse([x | acc])
 

@@ -1,9 +1,13 @@
 defmodule Randex.Context do
+  @moduledoc false
+
   defmodule Global do
+    @moduledoc false
     defstruct [:extended, :multiline, :dotall, :caseless, group: 0]
   end
 
   defmodule Local do
+    @moduledoc false
     defstruct [:extended, :multiline, :dotall, :caseless]
   end
 

@@ -1,4 +1,6 @@
 defmodule Randex.Parser do
+  @moduledoc false
+
   alias Randex.Context
   alias Randex.AST
   alias Randex.Utils

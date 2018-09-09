@@ -1,4 +1,6 @@
 defmodule Randex.BFS do
+  @moduledoc false
+
   def to_stream(amb), do: amb
 
   def constant(value) do

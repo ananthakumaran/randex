@@ -1,4 +1,5 @@
 defmodule Randex.Amb do
+  @moduledoc false
   @skip :__skip__
 
   def to_stream(amb) do
@@ -38,18 +39,16 @@ defmodule Randex.Amb do
   end
 
   def repeat(amb, n, fun) when is_function(amb) do
-    fn ->
-      if n == 0 do
-        amb.()
-      else
-        repeat(fun.(amb), n - 1, fun).()
-      end
+    if n == 0 do
+      amb
+    else
+      repeat(fun.(amb), n - 1, fun)
     end
   end
 
-  def bind_filter(s, fun) when is_function(s) do
+  def bind_filter(amb, fun) when is_function(amb) do
     fn ->
-      case s.() do
+      case amb.() do
         @skip ->
           @skip
 
@@ -62,27 +61,15 @@ defmodule Randex.Amb do
     end
   end
 
-  def bind(s, fun) when is_function(s) do
-    fn ->
-      case s.() do
-        @skip ->
-          @skip
-
-        x ->
-          fun.(x).()
-      end
-    end
+  def bind(amb, fun) when is_function(amb) do
+    bind_filter(amb, fn x ->
+      {:cont, fun.(x)}
+    end)
   end
 
-  def map(s, fun) when is_function(s) do
-    fn ->
-      case s.() do
-        @skip ->
-          @skip
-
-        x ->
-          fun.(x)
-      end
-    end
+  def map(amb, fun) when is_function(amb) do
+    bind(amb, fn x ->
+      constant(fun.(x))
+    end)
   end
 end

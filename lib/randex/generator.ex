@@ -1,9 +1,12 @@
 defmodule Randex.Generator do
+  @moduledoc false
+
   alias Randex.AST
   alias Randex.Utils
   import Randex.Amb
 
   defmodule State do
+    @moduledoc false
     defstruct group: %{}, stack: []
   end
 
