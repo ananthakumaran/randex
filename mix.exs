@@ -7,7 +7,7 @@ defmodule Randex.MixProject do
     [
       app: :randex,
       version: @version,
-      elixir: "~> 1.6",
+      elixir: "~> 1.4",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: "A library to generate random strings that match the given Regex",
