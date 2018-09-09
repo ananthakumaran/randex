@@ -1,8 +1,6 @@
 matrix:
   include:
     - language: elixir
-      elixir: 1.4.2
-    - language: elixir
       otp_release: 20.3
       elixir: 1.5
     - language: elixir
