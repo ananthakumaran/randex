@@ -25,8 +25,18 @@ defmodule Randex.Utils do
     end
   end
 
+  def swap_char_case(string) do
+    n = string_to_integer(string)
+
+    swap_case(n..n)
+    |> Enum.map(fn range ->
+      integer_to_string(range.first)
+    end)
+  end
+
   def swap_case(range) do
     cond do
+      range.last < ?A || range.first > ?z || (range.first > ?Z && range.last < ?a) -> [range]
       range.first < ?A -> [range.first..(?A - 1)] ++ swap_case(?A..range.last)
       range.last <= ?Z -> [range, (range.first + 32)..(range.last + 32)]
       range.first <= ?Z -> swap_case(range.first..?Z) ++ swap_case((?Z + 1)..range.last)

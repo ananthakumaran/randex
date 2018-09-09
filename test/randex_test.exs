@@ -8,6 +8,7 @@ defmodule RandexTest do
     assert_not_empty(stream(~r/[a-z]*/i))
     assert_not_empty(stream(~r/[a-z]*/))
     assert_not_empty(stream("[a-z]*"))
+    assert_not_empty(stream(~r/abcdef;-/i))
   end
 
   defp assert_not_empty(stream) do

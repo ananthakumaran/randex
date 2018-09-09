@@ -18,7 +18,7 @@ defmodule Randex.Parser do
   defp do_parse("." <> rest), do: {%AST.Dot{}, rest}
 
   defp do_parse("#" <> rest) do
-    fun = fn old_ast, context ->
+    fn old_ast, context ->
       {ast, rest} =
         if Context.mode?(context, :extended) do
           [comment, rest] =
@@ -34,39 +34,31 @@ defmodule Randex.Parser do
 
       parse_loop(rest, &do_parse/1, [ast | old_ast], context)
     end
-
-    {:cont, fun}
   end
 
   defp do_parse(<<x::utf8>> <> rest) when x in @whitespaces do
-    fun = fn old_ast, context ->
+    fn old_ast, context ->
       if Context.mode?(context, :extended) do
         parse_loop(rest, &do_parse/1, old_ast, context)
       else
         parse_loop(rest, &do_parse/1, [%AST.Char{value: <<x::utf8>>} | old_ast], context)
       end
     end
-
-    {:cont, fun}
   end
 
   defp do_parse("[" <> rest) do
-    fun = fn old_ast, context ->
+    fn old_ast, context ->
       [class, rest] = String.split(rest, ~r/(?<=\\\\|[^\\])]/, parts: 2)
       ast = parse_class(class, context)
       parse_loop(rest, &do_parse/1, [ast | old_ast], context)
     end
-
-    {:cont, fun}
   end
 
   defp do_parse("|" <> rest) do
-    fun = fn ast, context ->
+    fn ast, context ->
       {right, context} = parse_loop(rest, &do_parse/1, [], context)
       {[%AST.Or{left: Enum.reverse(ast), right: right}], context}
     end
-
-    {:cont, fun}
   end
 
   defp do_parse("(" <> rest) do
@@ -113,7 +105,14 @@ defmodule Randex.Parser do
   defp do_parse("+" <> _rest = full), do: maybe_repetition(full)
 
   defp do_parse(<<x::utf8>> <> rest) do
-    {%AST.Char{value: <<x::utf8>>}, rest}
+    fn ast, context ->
+      parse_loop(
+        rest,
+        &do_parse/1,
+        [%AST.Char{value: <<x::utf8>>, caseless: Context.mode?(context, :caseless)} | ast],
+        context
+      )
+    end
   end
 
   defp parse_class(string, context) do
@@ -134,7 +133,7 @@ defmodule Randex.Parser do
   end
 
   defp do_parse_class("-" <> rest) do
-    fun = fn
+    fn
       [first | old_ast], context ->
         {[last | rest], context} = parse_loop(rest, &do_parse_class/1, [], context)
         {Enum.reverse(old_ast) ++ [%AST.Range{first: first, last: last}] ++ rest, context}
@@ -142,8 +141,6 @@ defmodule Randex.Parser do
       [], context ->
         parse_loop(rest, &do_parse_class/1, [%AST.Char{value: "-"}], context)
     end
-
-    {:cont, fun}
   end
 
   defp do_parse_class(<<x::utf8>> <> rest) do
@@ -154,7 +151,7 @@ defmodule Randex.Parser do
 
   defp parse_loop(rest, parser, ast, context) do
     case parser.(rest) do
-      {:cont, fun} ->
+      fun when is_function(fun) ->
         fun.(ast, context)
 
       {result, rest} ->
@@ -184,7 +181,7 @@ defmodule Randex.Parser do
     name = Map.get(options, :name)
     {inner, rest} = find_matching(rest, "", 0)
 
-    fun = fn ast, context ->
+    fn ast, context ->
       {context, number} =
         if capture do
           context = Context.update_global(context, :group, &(&1 + 1))
@@ -212,8 +209,6 @@ defmodule Randex.Parser do
         context
       )
     end
-
-    {:cont, fun}
   end
 
   defp find_matching("\\" <> <<x::utf8>> <> rest, acc, count),
@@ -229,7 +224,7 @@ defmodule Randex.Parser do
   defp maybe_repetition(<<x::utf8>> <> rest) do
     char = <<x::utf8>>
 
-    fun = fn
+    fn
       [], context ->
         parse_loop(rest, &do_parse/1, [%AST.Char{value: char}], context)
 
@@ -290,7 +285,10 @@ defmodule Randex.Parser do
                         parse_loop(
                           old_rest,
                           &do_parse/1,
-                          [%AST.Char{value: char} | [current | old_ast]],
+                          [
+                            %AST.Char{value: char, caseless: Context.mode?(context, :caseless)}
+                            | [current | old_ast]
+                          ],
                           context
                         )
                     end
@@ -299,7 +297,10 @@ defmodule Randex.Parser do
                     parse_loop(
                       old_rest,
                       &do_parse/1,
-                      [%AST.Char{value: char} | [current | old_ast]],
+                      [
+                        %AST.Char{value: char, caseless: Context.mode?(context, :caseless)}
+                        | [current | old_ast]
+                      ],
                       context
                     )
                 end
@@ -308,21 +309,22 @@ defmodule Randex.Parser do
                 parse_loop(
                   rest,
                   &do_parse/1,
-                  [%AST.Char{value: char} | [current | old_ast]],
+                  [
+                    %AST.Char{value: char, caseless: Context.mode?(context, :caseless)}
+                    | [current | old_ast]
+                  ],
                   context
                 )
             end
         end
     end
-
-    {:cont, fun}
   end
 
   defp parse_options(rest) do
     [options, rest] = String.split(rest, ")", parts: 2)
     {options, nil} = parse_loop(options, &do_parse_option/1, [], nil)
 
-    fun = fn ast, context ->
+    fn ast, context ->
       {local, _} =
         Enum.reduce(options, {context.local, true}, fn option, {local, pred} ->
           case option do
@@ -334,8 +336,6 @@ defmodule Randex.Parser do
 
       parse_loop(rest, &do_parse/1, [%AST.Option{value: options} | ast], %{context | local: local})
     end
-
-    {:cont, fun}
   end
 
   defp do_parse_option("#" <> comment) do
@@ -433,7 +433,7 @@ defmodule Randex.Parser do
   end
 
   defp escape(x, rest, class) do
-    fun = fn old_ast, context ->
+    fn old_ast, context ->
       {ast, rest} =
         case x do
           x when x in ["a", "b", "e", "f", "n", "r", "t", "v"] ->
@@ -529,7 +529,5 @@ defmodule Randex.Parser do
         parse_loop(rest, &do_parse/1, ast ++ old_ast, context)
       end
     end
-
-    {:cont, fun}
   end
 end

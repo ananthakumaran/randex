@@ -3,7 +3,7 @@ defmodule Randex.AST do
 
   defmodule Char do
     @moduledoc false
-    defstruct [:value]
+    defstruct [:value, caseless: false]
   end
 
   defmodule Assertion do

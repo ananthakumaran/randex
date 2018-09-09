@@ -16,8 +16,12 @@ defmodule Randex.Generator do
     |> to_stream
   end
 
-  defp do_gen(%AST.Char{value: char}) do
-    constant(char)
+  defp do_gen(%AST.Char{value: char, caseless: caseless}) do
+    if caseless do
+      member_of(Utils.swap_char_case(char))
+    else
+      constant(char)
+    end
   end
 
   defp do_gen(%AST.Group{values: asts, name: name, number: n}) do
@@ -234,8 +238,7 @@ defmodule Randex.Generator do
         Utils.string_to_integer(first)..Utils.string_to_integer(last)
     end)
     |> Enum.flat_map(fn range ->
-      if caseless &&
-           !(range.last < ?A || range.first > ?z || (range.first > ?Z && range.last < ?a)) do
+      if caseless do
         Utils.swap_case(range)
       else
         [range]
