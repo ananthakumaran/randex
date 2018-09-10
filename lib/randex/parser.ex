@@ -66,6 +66,9 @@ defmodule Randex.Parser do
       "?:" <> rest ->
         parse_group(rest, %{capture: false})
 
+      "?>" <> rest ->
+        parse_group(rest, %{capture: false, atomic: true})
+
       "?'" <> rest ->
         parse_named_group(rest, "'")
 
@@ -233,7 +236,10 @@ defmodule Randex.Parser do
 
         cond do
           char == "?" && current.__struct__ == AST.Repetition ->
-            parse_loop(rest, &do_parse/1, [%{%AST.Lazy{} | value: current} | old_ast], context)
+            parse_loop(rest, &do_parse/1, [%AST.Lazy{value: current} | old_ast], context)
+
+          char == "+" && current.__struct__ == AST.Repetition ->
+            parse_loop(rest, &do_parse/1, [%AST.Possesive{value: current} | old_ast], context)
 
           Enum.member?(["*", "?", "+"], char) ->
             ast =

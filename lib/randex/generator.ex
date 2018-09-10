@@ -193,6 +193,14 @@ defmodule Randex.Generator do
     {:cont, fun}
   end
 
+  defp do_gen(%AST.Possesive{value: value}) do
+    fun = fn generator ->
+      gen_loop([value], generator)
+    end
+
+    {:cont, fun}
+  end
+
   defp do_gen(%AST.Repetition{min: min, max: max, value: ast}) do
     fun = fn generator ->
       max =

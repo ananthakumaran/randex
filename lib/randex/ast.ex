@@ -33,7 +33,7 @@ defmodule Randex.AST do
 
   defmodule Group do
     @moduledoc false
-    defstruct [:values, :capture, :name, :number]
+    defstruct [:values, :capture, :atomic, :name, :number]
   end
 
   defmodule Repetition do
@@ -42,6 +42,11 @@ defmodule Randex.AST do
   end
 
   defmodule Lazy do
+    @moduledoc false
+    defstruct [:value]
+  end
+
+  defmodule Possesive do
     @moduledoc false
     defstruct [:value]
   end
