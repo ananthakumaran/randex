@@ -24,9 +24,13 @@ defmodule Randex.Generator do
     end
   end
 
-  defp do_gen(%AST.Group{values: asts, name: name, number: n}) do
+  defp do_gen({:group_end, %AST.Group{name: name, number: n}}) do
     fun = fn generator ->
-      bind_gen(generator, asts, &map/2, fn candidate, group_candidate, state ->
+      map(generator, fn {new_candidate, state} ->
+        [candidate | rest] = state.stack
+        state = %{state | stack: rest}
+        group_candidate = String.replace_prefix(new_candidate, candidate, "")
+
         group =
           state.group
           |> Map.put(n, group_candidate)
@@ -34,11 +38,25 @@ defmodule Randex.Generator do
 
         state = %{state | group: group}
 
-        {candidate <> group_candidate, state}
+        {new_candidate, state}
       end)
     end
 
     {:cont, fun}
+  end
+
+  defp do_gen(%AST.Group{values: asts} = group) do
+    fun = fn generator, rest ->
+      generator =
+        map(generator, fn {candidate, state} ->
+          state = %{state | stack: [candidate | state.stack]}
+          {candidate, state}
+        end)
+
+      gen_loop(asts ++ [{:group_end, group}] ++ rest, generator)
+    end
+
+    {:cont_rest, fun}
   end
 
   defp do_gen(%AST.BackReference{} = backref) do
@@ -194,14 +212,14 @@ defmodule Randex.Generator do
   end
 
   defp do_gen(%AST.Or{left: left, right: right}) do
-    fun = fn generator ->
+    fun = fn generator, rest ->
       member_of([left, right])
       |> bind(fn ast ->
-        gen_loop(ast, generator)
+        gen_loop(ast ++ rest, generator)
       end)
     end
 
-    {:cont, fun}
+    {:cont_rest, fun}
   end
 
   defp do_gen(%AST.Range{first: first, last: last}) do

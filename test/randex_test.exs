@@ -11,6 +11,10 @@ defmodule RandexTest do
     assert_not_empty(stream(~r/abcdef;-/i))
   end
 
+  test "sample" do
+    gen("^\\d(?:\\d|$)(?:P)?$")
+  end
+
   defp assert_not_empty(stream) do
     assert Enum.count(Enum.take(stream, 100)) == 100
   end
