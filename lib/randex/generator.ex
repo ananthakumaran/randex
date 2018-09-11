@@ -185,6 +185,10 @@ defmodule Randex.Generator do
     constant("")
   end
 
+  defp do_gen(%AST.Verb{}) do
+    constant("")
+  end
+
   defp do_gen(%AST.Lazy{value: value}) do
     fun = fn generator ->
       gen_loop([value], generator)

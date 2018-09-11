@@ -751,10 +751,23 @@ Z*(|d*){216}
 
 \sabc
 
-^\w+(?>\s*)(?<=\w)
-
 \A(?:[^\"]++)
 
 (?:x|(?:(xx|yy)+|x|x|x|x|x)|a|a|a)bc
+
+(?x)^ a + #comment
+  #comment
+  + b $
+
+(?x)^ a + #comment
+  + b $
+
+^A\o{123}B
+
+^A\xZ
+
+\x{0b}abc
+
+(*UTF)\x{1F600}emoji
 
 X+(?#comment)?

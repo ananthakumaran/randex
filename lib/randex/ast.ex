@@ -75,4 +75,9 @@ defmodule Randex.AST do
     @moduledoc false
     defstruct [:positive, :value]
   end
+
+  defmodule Verb do
+    @moduledoc false
+    defstruct [:value]
+  end
 end

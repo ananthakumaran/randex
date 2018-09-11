@@ -36,6 +36,11 @@ defmodule Randex.Parser do
     end
   end
 
+  defp do_parse("(*" <> rest) do
+    [name, rest] = String.split(rest, ")", parts: 2)
+    {%AST.Verb{value: name}, rest}
+  end
+
   defp do_parse(<<x::utf8>> <> rest) when x in @whitespaces do
     fn old_ast, context ->
       if Context.mode?(context, :extended) do
@@ -466,8 +471,21 @@ defmodule Randex.Parser do
             {charset(x, class), rest}
 
           "x" ->
-            <<hex::binary-2, rest::binary>> = rest
-            {[%AST.Char{value: Macro.unescape_string("\\x" <> hex)}], rest}
+            case rest do
+              <<x::integer, y::integer, _::binary>>
+              when (x in ?0..?9 or x in ?A..?F or x in ?a..?f) and
+                     (y in ?0..?9 or y in ?A..?F or y in ?a..?f) ->
+                <<hex::binary-2, rest::binary>> = rest
+                {[%AST.Char{value: Macro.unescape_string("\\x" <> hex)}], rest}
+
+              "{" <> rest ->
+                [number, rest] = String.split(rest, "}", parts: 2)
+                {n, ""} = Integer.parse(number, 16)
+                {[%AST.Char{value: <<n::utf8>>}], rest}
+
+              _ ->
+                {[%AST.Char{value: <<0>>}], rest}
+            end
 
           "k" ->
             {terminator, rest} =
@@ -504,6 +522,12 @@ defmodule Randex.Parser do
                 {n, rest} = Integer.parse(rest)
                 {[%AST.BackReference{number: n}], rest}
             end
+
+          "o" ->
+            "{" <> rest = rest
+            [number, rest] = String.split(rest, "}", parts: 2)
+            {n, ""} = Integer.parse(number, 8)
+            {[%AST.Char{value: <<n::utf8>>}], rest}
 
           <<x::utf8>> when x in 48..57 ->
             base =
