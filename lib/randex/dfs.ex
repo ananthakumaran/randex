@@ -1,4 +1,4 @@
-defmodule Randex.BFS do
+defmodule Randex.DFS do
   @moduledoc false
 
   def to_stream(amb), do: amb
