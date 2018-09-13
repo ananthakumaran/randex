@@ -527,7 +527,7 @@ defmodule Randex.Parser do
             "{" <> rest = rest
             [number, rest] = String.split(rest, "}", parts: 2)
             {n, ""} = Integer.parse(number, 8)
-            {[%AST.Char{value: <<n::utf8>>}], rest}
+            {[%AST.Char{value: Utils.integer_to_string(n)}], rest}
 
           <<x::utf8>> when x in 48..57 ->
             base =
@@ -546,7 +546,7 @@ defmodule Randex.Parser do
                 {[%AST.BackReference{number: n}], rest}
 
               true ->
-                {[%AST.Char{value: <<n::utf8>>}], rest}
+                {[%AST.Char{value: Utils.integer_to_string(n)}], rest}
             end
 
           _ ->

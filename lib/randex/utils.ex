@@ -47,12 +47,11 @@ defmodule Randex.Utils do
     end
   end
 
-  def string_to_integer(a) do
-    [x] = String.to_charlist(a)
+  def string_to_integer(<<x::integer>>) do
     x
   end
 
   def integer_to_string(x) do
-    to_string([x])
+    <<x::integer>>
   end
 end
