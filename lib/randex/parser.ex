@@ -5,7 +5,12 @@ defmodule Randex.Parser do
   alias Randex.AST
   alias Randex.Utils
 
+  @posix ~w(alnum alpha ascii blank cntrl digit graph lower print punct space upper word xdigit)
+  @class_end ~r/(?<!#{Enum.join(Enum.map(@posix, &"\\[:\\^#{&1}:"), "|")})(?<!#{
+               Enum.join(Enum.map(@posix, &"\\[:#{&1}:"), "|")
+             })(?<=\\\\|[^\\])]/
   @whitespaces [?\s, ?\n, ?\t, ?\v, ?\r, ?\f]
+
   def parse(string, context \\ %Context{global: %Context.Global{}, local: %Context.Local{}}) do
     {ast, _context} = parse_loop(string, &do_parse/1, [], context)
     ast
@@ -53,7 +58,7 @@ defmodule Randex.Parser do
 
   defp do_parse("[" <> rest) do
     fn old_ast, context ->
-      [class, rest] = String.split(rest, ~r/(?<=\\\\|[^\\])]/, parts: 2)
+      [class, rest] = String.split(rest, @class_end, parts: 2)
       ast = parse_class(class, context)
       parse_loop(rest, &do_parse/1, [ast | old_ast], context)
     end
@@ -151,6 +156,83 @@ defmodule Randex.Parser do
     end
   end
 
+  defp do_parse_class("[:" <> rest) do
+    fn old_asts, context ->
+      {negate, rest} =
+        case rest do
+          "^" <> rest -> {true, rest}
+          _ -> {false, rest}
+        end
+
+      {charset, rest} =
+        case rest do
+          "alnum:]" <> rest ->
+            {[?0..?9, ?A..?Z, ?a..?z], rest}
+
+          "alpha:]" <> rest ->
+            {[?A..?Z, ?a..?z], rest}
+
+          "ascii:]" <> rest ->
+            {[0..127], rest}
+
+          "blank:]" <> rest ->
+            {[" ", "\t"], rest}
+
+          "cntrl:]" <> rest ->
+            {[0..31], rest}
+
+          "digit:]" <> rest ->
+            {[?0..?9], rest}
+
+          "graph:]" <> rest ->
+            {[33..126], rest}
+
+          "lower:]" <> rest ->
+            {[?a..?z], rest}
+
+          "print:]" <> rest ->
+            {[32..126], rest}
+
+          "punct:]" <> rest ->
+            {[33..47, 58..64, 91..96, 123..126], rest}
+
+          "space:]" <> rest ->
+            {@whitespaces, rest}
+
+          "upper:]" <> rest ->
+            {[?A..?Z], rest}
+
+          "word:]" <> rest ->
+            {[?_, ?0..?9, ?A..?Z, ?a..?z], rest}
+
+          "xdigit:]" <> rest ->
+            {[?0..?9, ?a..?f, ?A..?F], rest}
+
+          _ ->
+            if negate do
+              {[], rest}
+            else
+              {[], rest}
+            end
+        end
+
+      asts =
+        case charset do
+          [] ->
+            if negate do
+              as_ranges(["[", ":", "^"])
+            else
+              as_ranges(["[", ":"])
+            end
+
+          _ ->
+            as_ranges(charset, negate)
+        end
+
+      parse_loop(rest, &do_parse_class/1, asts ++ old_asts, context)
+    end
+  end
+
   defp do_parse_class(<<x::utf8>> <> rest) do
     {%AST.Char{value: <<x::utf8>>}, rest}
   end
@@ -221,6 +303,11 @@ defmodule Randex.Parser do
 
   defp find_matching("\\" <> <<x::utf8>> <> rest, acc, count),
     do: find_matching(rest, acc <> "\\" <> <<x::utf8>>, count)
+
+  defp find_matching("[" <> rest, acc, count) do
+    [class, rest] = String.split(rest, @class_end, parts: 2)
+    find_matching(rest, acc <> "[" <> class <> "]", count)
+  end
 
   defp find_matching(")" <> rest, acc, 0), do: {acc, rest}
   defp find_matching(")" <> rest, acc, count), do: find_matching(rest, acc <> ")", count - 1)
@@ -414,33 +501,36 @@ defmodule Randex.Parser do
           [?_, ?0..?9, ?A..?Z, ?a..?z]
       end
 
-    asts =
-      Enum.map(set, fn
-        x when is_binary(x) ->
-          [x] = String.to_charlist(x)
-          x..x
-
-        x when is_integer(x) ->
-          x..x
-
-        x ->
-          x
-      end)
-      |> Enum.sort_by(fn range -> range.first end)
-      |> Utils.non_overlapping([])
-      |> Utils.negate_range(code != String.downcase(code))
-      |> Enum.map(fn range ->
-        %AST.Range{
-          first: %AST.Char{value: <<range.first::utf8>>},
-          last: %AST.Char{value: <<range.last::utf8>>}
-        }
-      end)
+    asts = as_ranges(set, code != String.downcase(code))
 
     if inside_class do
       asts
     else
       [%AST.Class{values: asts, negate: false}]
     end
+  end
+
+  defp as_ranges(charset, negate \\ false) do
+    Enum.map(charset, fn
+      x when is_binary(x) ->
+        [x] = String.to_charlist(x)
+        x..x
+
+      x when is_integer(x) ->
+        x..x
+
+      x ->
+        x
+    end)
+    |> Enum.sort_by(fn range -> range.first end)
+    |> Utils.non_overlapping([])
+    |> Utils.negate_range(negate)
+    |> Enum.map(fn range ->
+      %AST.Range{
+        first: %AST.Char{value: <<range.first::utf8>>},
+        last: %AST.Char{value: <<range.last::utf8>>}
+      }
+    end)
   end
 
   defp escape(x, rest, class) do

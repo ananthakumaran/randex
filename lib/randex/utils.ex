@@ -14,9 +14,10 @@ defmodule Randex.Utils do
   def negate_range(ranges), do: negate_range(ranges, true)
 
   def negate_range(ranges, false), do: ranges
-  def negate_range(ranges, true), do: negate_range(ranges, 32, [])
+  def negate_range(ranges, true), do: negate_range(ranges, 0, [])
 
-  def negate_range([], low, acc), do: Enum.reverse([low..126 | acc])
+  def negate_range([], low, acc) when low < 126, do: Enum.reverse([low..126 | acc])
+  def negate_range([], _low, acc), do: Enum.reverse(acc)
 
   def negate_range([a | rest], low, acc) do
     cond do
@@ -48,6 +49,10 @@ defmodule Randex.Utils do
   end
 
   def string_to_integer(<<x::integer>>) do
+    x
+  end
+
+  def string_to_integer(<<x::integer-16>>) do
     x
   end
 

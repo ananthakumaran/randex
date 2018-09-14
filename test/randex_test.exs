@@ -12,7 +12,7 @@ defmodule RandexTest do
   end
 
   test "sample" do
-    gen("^\\d(?:\\d|$)(?:P)?$")
+    gen("[[:^upper]")
   end
 
   defp assert_not_empty(stream) do
