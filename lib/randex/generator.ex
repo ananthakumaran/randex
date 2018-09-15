@@ -130,18 +130,12 @@ defmodule Randex.Generator do
     {:cont_rest, fun}
   end
 
-  defp do_gen(%AST.Assertion{value: value}) when value in ["^", "A"] do
+  defp do_gen(%AST.Assertion{value: value, ahead: false}) do
     fun = fn generator ->
       bind_filter(
         generator,
         fn {candidate, state} ->
-          valid =
-            case value do
-              "^" -> candidate == ""
-              "A" -> candidate == ""
-            end
-
-          if valid do
+          if candidate =~ ~r/#{value}\z/ do
             {:cont, constant({candidate, state})}
           else
             :skip
@@ -153,17 +147,10 @@ defmodule Randex.Generator do
     {:cont, fun}
   end
 
-  defp do_gen(%AST.Assertion{value: value}) when value in ["$", "Z", "z"] do
+  defp do_gen(%AST.Assertion{value: value, ahead: true}) do
     fun = fn generator, rest ->
       bind_gen(generator, rest, &bind_filter/2, fn candidate, sub_candidate, state ->
-        valid =
-          case value do
-            "$" -> sub_candidate == ""
-            "Z" -> sub_candidate == "" || sub_candidate == "\n"
-            "z" -> sub_candidate == ""
-          end
-
-        if valid do
+        if sub_candidate =~ ~r/\A#{value}/ do
           {:cont, constant({candidate <> sub_candidate, state})}
         else
           :skip

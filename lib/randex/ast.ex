@@ -8,7 +8,7 @@ defmodule Randex.AST do
 
   defmodule Assertion do
     @moduledoc false
-    defstruct [:value]
+    defstruct [:value, :ahead]
   end
 
   defmodule Dot do

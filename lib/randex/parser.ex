@@ -18,8 +18,8 @@ defmodule Randex.Parser do
 
   defp do_parse("\\" <> <<x::utf8>> <> rest), do: escape(<<x::utf8>>, rest, false)
 
-  defp do_parse("^" <> rest), do: {%AST.Assertion{value: "^"}, rest}
-  defp do_parse("$" <> rest), do: {%AST.Assertion{value: "$"}, rest}
+  defp do_parse("^" <> rest), do: {%AST.Assertion{value: "^", ahead: false}, rest}
+  defp do_parse("$" <> rest), do: {%AST.Assertion{value: "$", ahead: true}, rest}
   defp do_parse("." <> rest), do: {%AST.Dot{}, rest}
 
   defp do_parse("#" <> rest) do
@@ -540,8 +540,11 @@ defmodule Randex.Parser do
           x when x in ["a", "b", "e", "f", "n", "r", "t", "v"] ->
             {[%AST.Char{value: Macro.unescape_string("\\" <> x)}], rest}
 
-          x when x in ["A", "Z", "z"] ->
-            {[%AST.Assertion{value: x}], rest}
+          x when x in ["Z", "z"] ->
+            {[%AST.Assertion{value: "\\#{x}", ahead: true}], rest}
+
+          x when x in ["A"] ->
+            {[%AST.Assertion{value: "\\#{x}", ahead: false}], rest}
 
           "c" ->
             <<code::binary-1, rest::binary>> = rest
