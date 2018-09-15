@@ -661,8 +661,6 @@ ab[a-d]*(?<=abc|abde)
 
 \".*\"\s*(;.*)?$
 
-$
-
 (?x)  ^    a   (?# begins with a)  b\sc (?# then b c) $ (?# then end)
 
 (?x)   ^    a   (?# begins with a)  b\sc (?# then b c) $ (?# then end)
@@ -700,8 +698,6 @@ $
 \A(abc|def)=(\1){2,3}\Z
 
 ^12.34
-
-foo(?!bar)(.*)
 
 (?:(?!foo)...|^.{0,2})bar(.*)
 
@@ -780,8 +776,6 @@ XXXXXX
 
 \)
 
-a]
-
 }
 
 \}
@@ -790,11 +784,7 @@ a]
 
 ]
 
-]
-
 {
-
-}
 
 ^a
 
@@ -816,7 +806,6 @@ a*(^a)
 
 (..)*(...)*
 
-(..)*(...)*
 
 (ab|a)(bc|c)
 
@@ -840,10 +829,6 @@ a(b)|c(d)|a(e)f
 
 (a|b)c|a(b|c)
 
-(a|b)c|a(b|c)
-
-(a|b)*c|(a|ab)*c
-
 (a|b)*c|(a|ab)*c
 
 (.a|.b).*|.*(.a|.b)
@@ -861,8 +846,6 @@ aba|bab
 (aa|aaa)*|(a|aaaaa)
 
 (a.|.a.)*|(a|.a...)
-
-ab|a
 
 ab|a
 
@@ -952,17 +935,12 @@ xxx
 
 (^|[ (,;])((([Ff]eb[^ ]* *|0*2/|\* */?)0*[6-7]))([^0-9]|$)
 
-(^|[ (,;])((([Ff]eb[^ ]* *|0*2/|\* */?)0*[6-7]))([^0-9]|$)
-
-(^|[ (,;])((([Ff]eb[^ ]* *|0*2/|\* */?)0*[6-7]))([^0-9]|$)
 
 ((((((((((((((((((((((((((((((x))))))))))))))))))))))))))))))
 
 ((((((((((((((((((((((((((((((x))))))))))))))))))))))))))))))*
 
 a?(ab|ba)*
-
-abaa|abbaa|abbbaa|abbbbaa
 
 abaa|abbaa|abbbaa|abbbbaa
 
@@ -976,91 +954,7 @@ aaaa\nbbbb\ncccc\nddddd\neeeeee\nfffffff\ngggg\nhhhh\niiiii\njjjjj\nkkkkk\nllll
 
 a*a*a*a*a*b
 
-^
-
-$
-
-^$
-
 ^a$
-
-abc
-
-abc
-
-abc
-
-ab*c
-
-ab*bc
-
-ab*bc
-
-ab*bc
-
-ab+bc
-
-ab+bc
-
-ab?bc
-
-ab?bc
-
-ab?c
-
-^abc$
-
-^abc
-
-abc$
-
-^
-
-$
-
-a.c
-
-a.c
-
-a.*c
-
-a[bc]d
-
-a[b-d]e
-
-a[b-d]
-
-a[-b]
-
-a[b-]
-
-a]
-
-a[]]b
-
-a[^bc]d
-
-a[^-b]c
-
-ab|cd
-
-ab|cd
-
-a\(b
-
-a\(*b
-
-a\(*b
-
-((a))
-
-(a)b(c)
-
-a+b+c
-
-a*
-
-(a*)*
 
 (a*)*
 
@@ -1068,115 +962,17 @@ a*
 
 (a*|b)*
 
-(a*|b)*
-
-(a+|b)*
-
-(a+|b)+
-
-(a+|b)?
-
-[^ab]*
-
 (^)*
 
-(^)*
-
-a*
-
-([abc])*d
-
-([abc])*bcd
-
-a|b|c|d|e
-
-(a|b|c|d|e)f
-
 ((a*|b))*
-
-((a*|b))*
-
-abcd*efg
-
-ab*
-
-ab*
-
-(ab|cd)e
-
-[abhgefdc]ij
-
-(a|b)c*d
-
-(ab|ab*)bc
-
-a([bc]*)c*
-
-a([bc]*)(c*d)
-
-a([bc]+)(c*d)
-
-a([bc]*)(c+d)
-
-a[bcd]*dcdcde
-
-(ab|a)b*c
-
-((a)(b)c)(d)
 
 [A-Za-z_][A-Za-z0-9_]*
-
-^a(bc+|b[eh])g|.h$
-
-(bc+d$|ef*g.|h?i(j|k))
-
-(bc+d$|ef*g.|h?i(j|k))
-
-(bc+d$|ef*g.|h?i(j|k))
-
-(((((((((a)))))))))
-
-multiple words
-
-(.*)c(.*)
 
 abcd
 
 a(bc)d
 
 a[-]?c
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
-
-M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
 
 M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]
 
@@ -1190,53 +986,19 @@ a+(b|c)*d+
 
 ^([^!]+!)?([^!]+)$
 
-^([^!]+!)?([^!]+)$
-
-^([^!]+!)?([^!]+)$
-
 ^.+!([^!]+!)([^!]+)$
 
 ((foo)|(bar))!bas
 
-((foo)|(bar))!bas
-
-((foo)|(bar))!bas
-
-((foo)|bar)!bas
-
-((foo)|bar)!bas
-
 ((foo)|bar)!bas
 
 (foo|(bar))!bas
-
-(foo|(bar))!bas
-
-(foo|(bar))!bas
-
-(foo|bar)!bas
-
-(foo|bar)!bas
 
 (foo|bar)!bas
 
 ^(([^!]+!)?([^!]+)|.+!([^!]+!)([^!]+))$
 
 ^([^!]+!)?([^!]+)$|^.+!([^!]+!)([^!]+)$
-
-^([^!]+!)?([^!]+)$|^.+!([^!]+!)([^!]+)$
-
-^([^!]+!)?([^!]+)$|^.+!([^!]+!)([^!]+)$
-
-^([^!]+!)?([^!]+)$|^.+!([^!]+!)([^!]+)$
-
-^(([^!]+!)?([^!]+)|.+!([^!]+!)([^!]+))$
-
-^(([^!]+!)?([^!]+)|.+!([^!]+!)([^!]+))$
-
-^(([^!]+!)?([^!]+)|.+!([^!]+!)([^!]+))$
-
-^(([^!]+!)?([^!]+)|.+!([^!]+!)([^!]+))$
 
 .*(/XXX).*
 
@@ -1247,10 +1009,6 @@ a+(b|c)*d+
 .*(/000).*
 
 .*(\\000).*
-
-(a*)*
-
-(a*)+
 
 (a+)*
 
