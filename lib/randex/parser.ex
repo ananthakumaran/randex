@@ -255,7 +255,7 @@ defmodule Randex.Parser do
     regex =
       case ast do
         %AST.LookBehind{} -> "(?:" <> regex <> ")$"
-        _ -> regex
+        %AST.LookAhead{} -> "(?:^" <> regex <> ")"
       end
 
     {%{ast | value: Regex.compile!(regex)}, rest}
@@ -540,7 +540,7 @@ defmodule Randex.Parser do
           x when x in ["a", "b", "e", "f", "n", "r", "t", "v"] ->
             {[%AST.Char{value: Macro.unescape_string("\\" <> x)}], rest}
 
-          x when x in ["A", "Z"] ->
+          x when x in ["A", "Z", "z"] ->
             {[%AST.Assertion{value: x}], rest}
 
           "c" ->

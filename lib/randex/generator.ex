@@ -153,13 +153,14 @@ defmodule Randex.Generator do
     {:cont, fun}
   end
 
-  defp do_gen(%AST.Assertion{value: value}) when value in ["$", "Z"] do
+  defp do_gen(%AST.Assertion{value: value}) when value in ["$", "Z", "z"] do
     fun = fn generator, rest ->
       bind_gen(generator, rest, &bind_filter/2, fn candidate, sub_candidate, state ->
         valid =
           case value do
             "$" -> sub_candidate == ""
-            "Z" -> sub_candidate == ""
+            "Z" -> sub_candidate == "" || sub_candidate == "\n"
+            "z" -> sub_candidate == ""
           end
 
         if valid do

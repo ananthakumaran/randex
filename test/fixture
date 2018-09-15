@@ -1140,4 +1140,16 @@ X(.?){8,8}Y
 
 (ab|a|c|bcd)+(d*)
 
+^(?<wmi>[A-HJ-NPR-Z\d]{3})(?<vds>[A-HJ-NPR-Z\d]{5})(?<check>[\dX])(?<vis>(?<year>[A-HJ-NPR-Z\d])(?<plant>[A-HJ-NPR-Z\d])(?<seq>[A-HJ-NPR-Z\d]{6}))$
+
+\A(?=\w{6,10}\z).{6,10}
+
+\A(?=\w{6,10}\z)(?=[^a-z]*[a-z]).{6,10}
+
+\A(?=[^a-z]*[a-z])(?=(?:[^A-Z]*[A-Z]){3})(?=\D*\d)\w{6,10}\z
+
+(?!Q)\w
+
+\w(?<!Q)
+
 X+(?#comment)?
