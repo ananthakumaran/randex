@@ -4,7 +4,13 @@ defmodule Randex.Amb do
 
   def to_stream(amb) do
     Stream.repeatedly(amb)
-    |> Stream.filter(&(&1 != @skip))
+    |> Stream.transform(0, fn candidate, acc ->
+      cond do
+        candidate != @skip -> {[candidate], 0}
+        acc > 1000 -> {:halt, acc}
+        true -> {[], acc + 1}
+      end
+    end)
   end
 
   def constant(value) do

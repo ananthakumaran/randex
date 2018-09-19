@@ -537,10 +537,13 @@ defmodule Randex.Parser do
     fn old_ast, context ->
       {ast, rest} =
         case x do
-          x when x in ["a", "b", "e", "f", "n", "r", "t", "v"] ->
+          x when x in ["a", "e", "f", "n", "r", "t", "v"] ->
             {[%AST.Char{value: Macro.unescape_string("\\" <> x)}], rest}
 
-          x when x in ["Z", "z"] ->
+          "b" when class ->
+            {[%AST.Char{value: "\b"}], rest}
+
+          x when x in ["Z", "z", "b", "B"] ->
             {[%AST.Assertion{value: "\\#{x}", ahead: true}], rest}
 
           x when x in ["A"] ->

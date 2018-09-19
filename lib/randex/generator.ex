@@ -147,6 +147,31 @@ defmodule Randex.Generator do
     {:cont, fun}
   end
 
+  defp do_gen(%AST.Assertion{value: value, ahead: true}) when value in ["\\b", "\\B"] do
+    fun = fn generator, rest ->
+      bind_gen(generator, rest, &bind_filter/2, fn candidate, sub_candidate, state ->
+        match =
+          case value do
+            "\\b" ->
+              (candidate =~ ~r/\w\z/ && sub_candidate =~ ~r/^(\W|\Z)/) ||
+                (candidate =~ ~r/(^|\W)\z/ && sub_candidate =~ ~r/^\w/)
+
+            "\\B" ->
+              (candidate =~ ~r/\w\z/ && sub_candidate =~ ~r/^\w/) ||
+                (candidate =~ ~r/(^|\W)\z/ && sub_candidate =~ ~r/^(\W|\Z)/)
+          end
+
+        if match do
+          {:cont, constant({candidate <> sub_candidate, state})}
+        else
+          :skip
+        end
+      end)
+    end
+
+    {:cont_rest, fun}
+  end
+
   defp do_gen(%AST.Assertion{value: value, ahead: true}) do
     fun = fn generator, rest ->
       bind_gen(generator, rest, &bind_filter/2, fn candidate, sub_candidate, state ->

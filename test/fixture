@@ -349,23 +349,23 @@ cba
 
 \0
 
-\Ba\B
+.+\Ba\B.+
 
-\Bx
+.+\Bx
 
-\By\B
+.+\By\B.+
 
-\By\b
+.+\By\b
 
-\Bz
+.+\Bz
 
 \D+
 
 \a[\b]\f\n\r\t\v
 
-\ba\b
+\b.+a\b
 
-\by\B
+\by\B.+
 
 \by\b
 
@@ -509,11 +509,11 @@ w(?# comment 1)xy(?# comment 2)z
 
 w(?i)
 
-x\B
+x\B.+
 
 x\b
 
-z\B
+z\B.+
 
 abcd\t\n\r\f\a\e\071\x3b\$\\\?caxyz
 
@@ -1151,5 +1151,9 @@ X(.?){8,8}Y
 (?!Q)\w
 
 \w(?<!Q)
+
+cat\s\B\s
+
+\B a \B
 
 X+(?#comment)?

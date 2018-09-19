@@ -15,9 +15,13 @@ defmodule TestHelper do
     ast = Randex.Parser.parse(c)
     Logger.info("AST: " <> inspect(ast, pretty: true))
 
-    Randex.Generator.gen(ast)
-    |> Enum.take(100)
-    |> Enum.each(fn sample ->
+    candidates =
+      Randex.Generator.gen(ast)
+      |> Enum.take(100)
+
+    assert length(candidates) == 100
+
+    Enum.each(candidates, fn sample ->
       assert sample =~ regex
     end)
   end

@@ -11,8 +11,9 @@ defmodule RandexTest do
     assert_not_empty(stream(~r/abcdef;-/i))
   end
 
+  @tag capture_log: true
   test "sample" do
-    gen("[[:^upper]")
+    gen("z\\B.+")
   end
 
   defp assert_not_empty(stream) do
