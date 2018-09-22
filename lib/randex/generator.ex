@@ -6,7 +6,7 @@ defmodule Randex.Generator do
 
   defmodule Config do
     @moduledoc false
-    defstruct mod: Randex.Amb, max_repetition: 100
+    defstruct mod: Randex.Generator.Random, max_repetition: 100
   end
 
   defmodule State do

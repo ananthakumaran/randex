@@ -3,6 +3,7 @@ defmodule RandexTest do
   require TestHelper
   import TestHelper
   import Randex
+  alias Randex.Generator
 
   test "stream" do
     assert_not_empty(stream(~r/[a-z]*/i))
@@ -11,14 +12,13 @@ defmodule RandexTest do
     assert_not_empty(stream(~r/abcdef;-/i))
   end
 
-  @tag capture_log: true
-  test "sample" do
-    gen("z\\B.+")
-  end
-
   defp assert_not_empty(stream) do
     assert Enum.count(Enum.take(stream, 100)) == 100
   end
 
-  regtest("gen")
+  regtest("random", [path: "all", validate_length: true], %Generator.Config{max_repetition: 10})
+
+  regtest("random", [path: "random", validate_length: true], %Generator.Config{max_repetition: 10})
+
+  regtest("dfs", [path: "all"], %Generator.Config{mod: Generator.DFS})
 end

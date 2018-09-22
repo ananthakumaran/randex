@@ -1,4 +1,6 @@
-defmodule Randex.Amb do
+defmodule Randex.Generator.Random do
+  use Randex.Generator.Base
+
   @moduledoc false
   @skip :__skip__
 
@@ -31,27 +33,6 @@ defmodule Randex.Amb do
     end
   end
 
-  def integer(range) do
-    fn ->
-      Enum.random(range)
-    end
-  end
-
-  def string() do
-    fn ->
-      char = Enum.random(?\s..?~)
-      List.to_string([char])
-    end
-  end
-
-  def repeat(amb, n, fun) when is_function(amb) do
-    if n == 0 do
-      amb
-    else
-      repeat(fun.(amb), n - 1, fun)
-    end
-  end
-
   def bind_filter(amb, fun) when is_function(amb) do
     fn ->
       case amb.() do
@@ -65,17 +46,5 @@ defmodule Randex.Amb do
           end
       end
     end
-  end
-
-  def bind(amb, fun) when is_function(amb) do
-    bind_filter(amb, fn x ->
-      {:cont, fun.(x)}
-    end)
-  end
-
-  def map(amb, fun) when is_function(amb) do
-    bind(amb, fn x ->
-      constant(fun.(x))
-    end)
   end
 end
