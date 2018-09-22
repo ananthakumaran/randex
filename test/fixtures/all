@@ -613,10 +613,6 @@ ab{3,4a}cd
 
 {4,5a}bc
 
-(a|b\1)
-
-(a|b\1)+
-
 (January|February|March|April|May|June|July|August|September|October|November|December) ([1-9]|[12][0-9]|3[01]), (19|20)[0-9][0-9]
 
 [a-z0-9._+-]{1,20}@[a-z0-9]{3,15}\.[a-z]{2,4}

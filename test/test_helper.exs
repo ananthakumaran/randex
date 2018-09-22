@@ -50,7 +50,7 @@ defmodule TestHelper do
           unquote do
             Enum.map(cases, fn {c, j} ->
               quote do
-                test unquote("#{name} #{j} #{String.slice(c, 1..50)}") do
+                test unquote("#{name} #{j} #{String.slice(c, 0..50)}") do
                   unquote(__MODULE__).unquote(Macro.var(:gen, __MODULE__))(
                     unquote(c),
                     unquote(opts),

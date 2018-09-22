@@ -11,7 +11,7 @@ defmodule Randex.Generator do
 
   defmodule State do
     @moduledoc false
-    defstruct group: %{}, stack: []
+    defstruct group_start: %{}, group: %{}, stack: []
   end
 
   def gen(asts, config \\ %Config{}) do
@@ -31,8 +31,7 @@ defmodule Randex.Generator do
   defp do_gen({:group_end, %AST.Group{name: name, number: n}}, config) do
     fun = fn generator ->
       config.mod.map(generator, fn {new_candidate, state} ->
-        [candidate | rest] = state.stack
-        state = %{state | stack: rest}
+        candidate = Map.get(state.group_start, name || n)
         group_candidate = String.replace_prefix(new_candidate, candidate, "")
 
         group =
@@ -53,7 +52,11 @@ defmodule Randex.Generator do
     fun = fn generator, rest ->
       generator =
         config.mod.map(generator, fn {candidate, state} ->
-          state = %{state | stack: [candidate | state.stack]}
+          state = %{
+            state
+            | group_start: Map.put(state.group_start, group.name || group.number, candidate)
+          }
+
           {candidate, state}
         end)
 
