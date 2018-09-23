@@ -1,7 +1,6 @@
 defmodule Randex.Generator.Random do
   use Randex.Generator.Base
 
-  @moduledoc false
   @skip :__skip__
 
   def to_stream(amb) do

@@ -1,8 +1,6 @@
 defmodule Randex.Generator.DFS do
   use Randex.Generator.Base
 
-  @moduledoc false
-
   def to_stream(amb), do: amb
 
   def constant(value) do

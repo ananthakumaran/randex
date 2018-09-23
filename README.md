@@ -21,18 +21,4 @@ iex> Randex.stream(~r/(1[0-2]|0[1-9])(:[0-5]\d){2} (A|P)M/) |> Enum.take(10) |> 
 11:23:46 PM
 ```
 
-See the [documentation](https://hexdocs.pm/randex) for more information.
-
-## Unsupported Features
-
-* [Atomic Grouping and Possessive
-  Quantifiers](http://erlang.org/doc/man/re.html#sect15)
-
-* [Recursive Patterns](http://erlang.org/doc/man/re.html#sect20)
-
-* [Conditional Subpatterns](http://erlang.org/doc/man/re.html#sect18)
-
-* [Subpatterns as
-  Subroutines](http://erlang.org/doc/man/re.html#sect21)
-
-* [Backtracking Control](http://erlang.org/doc/man/re.html#sect23)
+Check [documentation](https://hexdocs.pm/randex) for more information.

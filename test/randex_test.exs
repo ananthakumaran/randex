@@ -1,5 +1,6 @@
 defmodule RandexTest do
   use ExUnit.Case
+  use ExUnitProperties
   require TestHelper
   import TestHelper
   import Randex
@@ -22,6 +23,12 @@ defmodule RandexTest do
       mod: Generator.StreamData,
       max_repetition: 10
     })
+  end
+
+  property "starts with cat" do
+    check all cat <- stream(~r/cat \w+/, mod: Randex.Generator.StreamData) do
+      assert String.starts_with?(cat, "cat")
+    end
   end
 
   regtest("random", [path: "all", validate_length: true], %Generator.Config{max_repetition: 10})

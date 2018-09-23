@@ -1,8 +1,6 @@
 defmodule Randex.Generator.StreamData do
   use Randex.Generator.Base
 
-  @moduledoc false
-
   def to_stream(s), do: s
 
   defdelegate constant(value), to: StreamData
