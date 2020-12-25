@@ -26,7 +26,7 @@ defmodule RandexTest do
   end
 
   property "starts with cat" do
-    check all cat <- stream(~r/cat \w+/, mod: Randex.Generator.StreamData) do
+    check all(cat <- stream(~r/cat \w+/, mod: Randex.Generator.StreamData)) do
       assert String.starts_with?(cat, "cat")
     end
   end
