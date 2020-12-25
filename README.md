@@ -1,6 +1,5 @@
 # Randex
 
-[![Build Status](https://secure.travis-ci.org/ananthakumaran/randex.svg?branch=master)](http://travis-ci.org/ananthakumaran/randex)
 [![Hex.pm](https://img.shields.io/hexpm/v/randex.svg)](https://hex.pm/packages/randex)
 
 A library to generate random strings that match the given Regex
